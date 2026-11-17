@@ -1,0 +1,22 @@
+REM GENRE "Ballad"
+REM DATE 2024
+PERFORMER "샘플 가수"
+TITLE "샘플 앨범"
+FILE "album.flac" WAVE
+  TRACK 01 AUDIO
+    TITLE "첫 곡"
+    INDEX 00 00:00:00
+    INDEX 01 00:00:32
+  TRACK 02 AUDIO
+    TITLE "두 번째 곡"
+    PERFORMER "피처링 가수"
+    INDEX 00 03:58:10
+    INDEX 01 04:00:00
+  TRACK 03 AUDIO
+    INDEX 01 07:15:74
+FILE "bonus.wav" WAVE
+  TRACK 04 AUDIO
+    TITLE "보너스"
+    INDEX 01 00:00:00
+  TRACK 05 DATA
+    INDEX 01 00:00:00

@@ -1,0 +1,19 @@
+# 줄 끝 고정 (v021) — Windows 배치 · PowerShell 은 CRLF 필수 (LF 면 cmd 가 줄을 잘못 읽음, f21), 셸 스크립트는 LF
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
+*.sh   text eol=lf
+gradlew text eol=lf
+*.py   text eol=lf
+*.kt   text eol=lf
+*.kts  text eol=lf
+*.md   text eol=lf
+*.jar  binary
+*.png  binary
+# v028 iOS
+*.swift text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+*.cfg   text eol=lf
+*.example text eol=lf

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 알송 가사 서버는 HTTP 만 지원 → 해당 도메인만 평문 허용 -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">lyrics.alsong.co.kr</domain>
+    </domain-config>
+</network-security-config>

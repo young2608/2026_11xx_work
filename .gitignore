@@ -1,0 +1,23 @@
+# yMp3Player — 빌드 산출물 · 중간물 (소스 아님)   v021
+/dist/
+src/pc/build/
+src/pc/log/
+src/pc/data/
+src/pc/tests/_home/
+__pycache__/
+*.pyc
+.pytest_cache/
+src/android/.gradle/
+src/android/.kotlin/
+src/android/build/
+src/android/app/build/
+src/android/local.properties
+*.bak
+# v028 iOS — Xcode 중간물 (Mac · GitHub Actions 에서 생김) · 개인 설정
+src/ios/yMp3Player.xcodeproj/
+src/ios/build/
+src/ios/out/
+src/ios/xcodebuild.log
+src/ios/YampCore/.build/
+src/ios/YampCore/.swiftpm/
+/ios.cfg

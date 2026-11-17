@@ -1,0 +1,9 @@
+# PC 앱 파이썬 패키지 (참고용, v021)
+# 기본 빌드 = MSYS2 UCRT64 pacman 패키지 (./build.sh deps) — 이 파일은 pip/venv 로 실행 · 테스트할 때만
+#   python -m venv .venv && .venv\Scripts\activate && pip install -r src/pc/requirements.txt
+# 주의: build.sh 는 MSYS2 의 /ucrt64/bin/python 을 씀 → 빌드 전에 다른 가상환경은 deactivate (f39)
+PyQt6>=6.5
+numpy>=1.24
+mutagen>=1.46
+pytest>=7
+pyinstaller>=6

@@ -1,0 +1,11 @@
+# yMp3Player iOS 빌드 설정 (vr0.1.0.028) — 이 파일을 ios.cfg 로 복사해서 채우세요 (ios.cfg 는 git 에 올라가지 않음)
+#   build_all.cmd ios  /  ./build.sh ios   가 읽음.  GH_REPO 가 비어 있으면 iOS 단계는 건너뜀 (PC · Android 빌드는 그대로)
+# GitHub 저장소 (계정/이름) — 예: young2608/2024_work  (다른 내용이 있는 저장소도 됨: 아래 전용 브랜치에만 올림)
+GH_REPO=
+# 올릴 브랜치 — ymp3player 에 올리면 GitHub Actions 가 자동으로 iOS 빌드 (.github/workflows/ios.yml 의 push 브랜치와 같아야 함)
+#   main 등 다른 브랜치는 건드리지 않음 · 처음 올릴 때 이 브랜치가 새로 생김
+GH_BRANCH=ymp3player
+# 1 = 빌드 전에 00__build 소스를 커밋 · push (처음이면 git init 도)   0 = 이미 올린 소스로만 빌드
+IOS_PUSH=1
+# build_all.cmd (all) 때도 iOS 를 함께 빌드 (1) / ios 명령일 때만 (0)
+IOS_IN_ALL=1

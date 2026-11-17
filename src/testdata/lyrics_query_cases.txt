@@ -1,0 +1,22 @@
+# 가사 검색어 변형 (vr0.1.0.011) — PC lyrics/query.py · Android lyrics/Query.kt 같은 결과
+# 제목|가수|=>|변형1 제목|변형1 가수|변형2 제목|… (최대 4쌍, 첫 쌍 = 원본 공백 정리)
+좋은 날 (Good Day) [MV]|아이유 (IU), 김창완|=>|좋은 날 (Good Day) [MV]|아이유 (IU), 김창완|좋은 날|아이유|좋은 날 (Good Day)|아이유|Good Day|아이유
+01. Dynamite (Official MV)|BTS|=>|01. Dynamite (Official MV)|BTS|Dynamite|BTS
+Yesterday - Remastered 2009|The Beatles|=>|Yesterday - Remastered 2009|The Beatles|Yesterday|The Beatles
+Stay feat. Justin Bieber|The Kid LAROI & Justin Bieber|=>|Stay feat. Justin Bieber|The Kid LAROI & Justin Bieber|Stay|The Kid LAROI
+밤편지|IU(아이유)|=>|밤편지|IU(아이유)|밤편지|IU|밤편지|아이유
+Love Dive|IVE|=>|Love Dive|IVE
+Track 01||=>|Track 01|
+10cm|10cm|=>|10cm|10cm
+2002|Anne-Marie|=>|2002|Anne-Marie
+Hype Boy (Live)|NewJeans x 민지|=>|Hype Boy (Live)|NewJeans x 민지|Hype Boy|NewJeans
+봄날 [Remix]|방탄소년단|=>|봄날 [Remix]|방탄소년단
+Butter (Hotter Remix)|BTS|=>|Butter (Hotter Remix)|BTS
+Simon|Simon and Garfunkel|=>|Simon|Simon and Garfunkel
+  사건의   지평선  |윤하|=>|사건의 지평선|윤하
+Ditto (Prod. 250)|NewJeans|=>|Ditto (Prod. 250)|NewJeans|Ditto|NewJeans
+Spicy - Live ver.|aespa|=>|Spicy - Live ver.|aespa|Spicy|aespa
+Next Level (feat. X)|aespa / 에스파|=>|Next Level (feat. X)|aespa / 에스파|Next Level|aespa
+Supernova|aespa；|=>|Supernova|aespa；
+12. |가수|=>|12.|가수
+Cupid (Twin Ver.)|FIFTY FIFTY|=>|Cupid (Twin Ver.)|FIFTY FIFTY|Cupid|FIFTY FIFTY

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 홈 화면 위젯 4x1 (C4): 제목 + 현재 가사 줄 + 이전 / 재생·일시정지 / 다음 (RemoteViews — 기본 위젯만 사용)
+     vr0.1.0.006: 버튼 = 벡터 이미지 (글꼴 기호는 기기에 따라 네모로 깨짐)
+     vr0.1.0.011 (f19): 테마 색 따라감 — 바탕/테두리 = 흰 모양 ImageView 두 장 (PlayerWidget 가 setColorFilter 로 surface/line 색),
+       글자 · 버튼 색도 PlayerWidget 가 칠함. 여기 색은 첫 모습 (써니) -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/widget_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_bg" />
+
+    <ImageView
+        android:id="@+id/widget_border"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_border" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp">
+
+            <TextView
+                android:id="@+id/widget_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/app_name"
+                android:textColor="@color/yamp_accent_text"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/widget_line"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text=""
+                android:textColor="@color/yamp_text"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/widget_prev"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="이전"
+            android:padding="9dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_w_prev"
+            android:tint="@color/yamp_text" />
+
+        <ImageView
+            android:id="@+id/widget_toggle"
+            android:layout_width="44dp"
+            android:layout_height="40dp"
+            android:contentDescription="재생"
+            android:padding="9dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_w_play"
+            android:tint="@color/yamp_accent_text" />
+
+        <ImageView
+            android:id="@+id/widget_next"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="다음"
+            android:padding="9dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_w_next"
+            android:tint="@color/yamp_text" />
+    </LinearLayout>
+</FrameLayout>

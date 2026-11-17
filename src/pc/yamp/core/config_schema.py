@@ -1,0 +1,230 @@
+# -*- coding: utf-8 -*-
+"""설정 항목 표 (vr0.1.0.019 R4 — core/config.py 에서 나눔)
+
+  DEFAULT_CONFIG_TEXT  config.txt 처음 만들 때의 내용 (주석 포함)
+  FILE_DEFAULTS        config.txt 키 → 기본값 (값의 타입 판별에도 씀)
+  STATE_DEFAULTS       data/state.json 키 → 기본값 (실행 상태)
+  CHOICES / LIMITS     고를 수 있는 값 · 숫자 범위 (벗어나면 기본값 + 로그 경고)
+새 설정을 추가할 때는 이 파일만 고치면 됨 (읽기 · 저장 로직은 config.py).
+"""
+
+
+DEFAULT_CONFIG_TEXT = """\
+# =====================================================================
+#  yMp3Player config.txt   (key = value,  '#' 주석)
+#  프로그램 시작 시 읽음. 메뉴에서 바꾼 설정은 이 파일의 해당 줄이 갱신됨.
+#  1 = 켬, 0 = 끔
+# =====================================================================
+
+[log]
+# DEBUG / INFO / WARNING / ERROR
+log_level        = INFO
+# 로그 폴더 (상대경로 = 이 파일이 있는 폴더 기준)
+log_dir          = log
+# 파일 1개 최대 크기(KB) — 넘으면 다음 번호 파일로 rotation
+log_max_size_kb  = 1024
+# rotation 파일 개수 (8 → 00 ~ 07 순환, 가장 오래된 파일부터 덮어씀)
+log_max_files    = 8
+
+[data]
+# 플레이리스트·가사 캐시·실행 상태 저장 폴더 (쓰기 불가면 %APPDATA%\\yMp3Player 사용)
+data_dir         = data
+# 처음 실행(목록 비어 있음) 때 불러올 음악 폴더 (빈 값 = 없음)
+start_folder     =
+
+[play]
+# 시작 시 마지막 곡·위치 이어 듣기
+resume_on_start  = 1
+# off / all / one
+repeat           = all
+shuffle          = 0
+
+[view]
+# 테마 (보기 → 테마, 바로 적용): sunny (기본: 흰색·노랑·주황) / clean_blue / mint / cherry / night_sunny
+#   neon (이전 기본) / dark / classic
+#   단계 테마 (vr0.1.0.024): light1~light5 = 라이트 · 라이트+ … 라이트++++ (+ 마다 덜 눈부시게)
+#                            dark1~dark5   = 다크 · 다크+ … 다크++++ (+ 마다 더 어둡게, dark5 = OLED 검정)
+theme            = sunny
+# Windows 어두운 모드 따라가기 (1 = 어두운 모드일 때 sunny → night_sunny, lightN → darkN, 밝은 테마 → dark)
+follow_system_dark = 0
+always_on_top    = 0
+spectrum         = 1
+lyrics_font_pt   = 13
+mini_opacity     = 0.85
+# 화면 배치: simple (기본: 왼쪽 아이콘 레일 · 아래 재생 막대 · 오른쪽 가사/대기열) / classic (Winamp 모양)
+#   바꾼 뒤 다시 시작하면 적용
+layout           = simple
+# 버튼에 마우스를 올리고 설명 팝업이 뜰 때까지(ms)
+tooltip_delay_ms = 500
+# Windows 다크/라이트 · 강조색 따라가기 (1 = 강조색을 Windows 색으로)
+follow_system_accent = 0
+# 글자 (vr0.1.0.016) — 크기(pt, 9~14: 보기 → 글자 크기) · 힌팅 · Windows 글꼴 엔진
+#   font_hinting: auto (100 % = full 가장 또렷, 125·150 % = vertical, 200 % 이상 = none) / full / vertical / none
+#   font_engine : auto (Qt 기본 = DirectWrite) / directwrite / gdi / freetype  — 글자가 흐릴 때 바꿔 비교 (다시 시작하면 적용)
+font_size        = 10
+# 글자 크기 자동 (vr0.1.0.023): 1 = 화면 크기에 맞춤 (1080p = 10pt · 1440p = 11 · 4K(100 %) = 13, 버튼·막대도 함께 커짐)
+#   0 = 위 font_size 그대로 — 보기 → 글자 크기에서 고르면 0 이 됨
+font_auto        = 1
+font_hinting     = auto
+font_engine      = auto
+# 화면 배율 맞춤 (vr0.1.0.017): passthrough (기본, 125·150 % 그대로) / round (가까운 정수 배율: 150 % → 200 %) /
+#   floor (내림: 125·150 % → 100 % — 가장 선명하지만 작아짐, 글자 크기를 키워 함께 쓰기) — 다시 시작하면 적용
+ui_scale_rounding = passthrough
+# 재생 막대의 곡 파형 높이(px, 24~80) (vr0.1.0.017)
+wave_height      = 44
+# 메뉴 막대 펼침 (0 = 접힘 — Alt 를 누르면 잠깐 보임, 보기 → 메뉴 막대 접기 · Ctrl+Shift+M)  (vr0.1.0.014)
+menu_bar         = 1
+# 제목 줄: [곡 - 앱 버전 │ 업비트 시세 │ KST 시각]  (vr0.1.0.014 — 메뉴바 오른쪽 칸은 없어짐)
+#   시세 = 업비트 공개 시세 (키 필요 없음), 창이 최소화·트레이면 갱신 멈춤 · 정보 표시용 (지연 가능)
+topbar_ticker    = 1
+# 업비트 마켓 코드 (쉼표로 여러 개: KRW-XRP,KRW-BTC → 3초마다 번갈아 표시)
+ticker_market    = KRW-XRP
+# 시세 갱신 주기(초, 최소 5) — 3번 연속 실패하면 30초, 6번이면 60초로 늘렸다가 성공하면 복귀
+ticker_interval_s = 10
+# KST(한국 시각) 시계 · 초 표시
+topbar_clock     = 1
+topbar_clock_seconds = 1
+
+[lyrics]
+# 가사 공급자 (찾는 순서: 캐시 → 같은 폴더 .lrc → 태그 내장 → 알송 · LRCLIB · NetEase 동시 조회 → 점수 최고)
+lyrics_local     = 1
+lyrics_embedded  = 1
+# 알송: 공식 공개 API 아님 (개인 사용)
+lyrics_alsong    = 1
+lyrics_lrclib    = 1
+# NetEase 클라우드 뮤직 (비공식, K-pop·J-pop·번역 가사) — 기본 꺼짐
+lyrics_netease   = 0
+# 네트워크 조회 전체 제한 시간(초, 공급자 동시 조회)
+lyrics_timeout_s = 6
+# 자동으로 쓸 최저 점수 (0~100, 제목·가수·싱크·길이) — 낮은 후보는 '다른 가사 찾기' 에만
+lyrics_min_score = 55
+# 못 찾은 곡을 기억하는 기간(일, 0 = 기억 안 함) — 그동안 자동 검색 안 함 (F5 다시 찾기는 함)
+lyrics_notfound_days = 7
+# 찾은 가사를 음악 옆 .lrc 로도 저장 (다른 플레이어에서도 사용, CUE 는 album.NN.lrc)
+lyrics_save_beside = 0
+# 자동으로 찾은 가사 캐시 최대 개수 (0 = 제한 없음) — 넘으면 하루 한 번 오래 안 쓴 것부터 정리, 직접 편집한 가사는 지우지 않음 (v022)
+lyrics_cache_max = 5000
+# 전체 가사 싱크 보정(ms, + = 가사를 빨리)
+lyrics_offset_ms = 0
+# 알송 encData — 비어 있으면 내장 값 사용 (공개 오픈소스 값), off = encData 없이 옛 방식
+alsong_enc_data  =
+# 3단 가사 (원문 / 발음 / 번역) — 발음·번역 줄 표시
+lyric_show_pron  = 1
+lyric_show_trans = 1
+# 미니 가사창 글자 크기, 클릭 투과(잠금)
+mini_font_pt     = 18
+mini_click_through = 0
+
+[sound]
+# 재생 엔진: qt (기본) / mpv (libmpv: 10밴드 EQ·음정·갭리스, mpv-2.dll 필요)
+audio_backend    = qt
+# 음량 맞춤 ReplayGain: off / track / album  (태그에 값이 있는 곡만)
+replaygain       = track
+# ReplayGain 추가 보정(dB)
+preamp_db        = 0
+# 곡 전환 페이드(초, 0 = 끔) — 곡 끝에서 줄이고 다음 곡 시작에서 올림
+crossfade_s      = 0
+# 슬립 타이머 끝날 때 볼륨을 줄이는 시간(초)
+sleep_fade_s     = 30
+# (옛 형식, sound 가 비어 있을 때만 읽음) 10밴드 dB: 31 62 125 250 500 1k 2k 4k 8k 16k
+eq_enabled       = 0
+eq_bands         = 0,0,0,0,0,0,0,0,0,0
+# 사운드 설정 (사운드 탭에서 바꾸면 자동 저장) — EQ·프리앰프·베이스·트레블·밸런스·리미터·압축
+#   mpv 엔진에서 적용, Qt 엔진은 화면만 (응답 곡선 미리보기)
+sound            =
+# 재생 막대를 곡 파형으로 표시 (처음 재생할 때 파형을 계산해 data/waveform 에 저장)
+waveform         = 1
+# 무음 건너뛰기 (녹음·강의의 조용한 부분을 빼고 재생) — mpv 엔진에서만 동작
+skip_silence     = 0
+# 30분 넘는 파일(녹음·강의·오디오북)은 파일마다 들은 위치를 기억해 다음에 이어서 재생 (최근 200개)
+resume_long      = 1
+
+[folder]
+# 폴더 재생: 하위 폴더 포함 / 정렬 name(파일명) · title(제목) · added(최근 수정)
+folder_include_sub = 1
+folder_sort      = name
+
+[library]
+# 라이브러리 폴더 (여러 개는 ; 로 구분) — 시작 시 백그라운드 스캔
+library_folders  =
+# 재생 기록 (추천에 사용, 기기 안에만 저장)
+history_enabled  = 1
+
+# 재생 목록이 끝나면: stop (정지) / sleep (PC 절전) / shutdown (60초 뒤 PC 종료, 취소 가능)
+end_action       = stop
+# 알람 재생: HH:MM (빈 값 = 끔) — 그 시각에 마지막 폴더(없으면 재생 목록)를 볼륨을 서서히 올리며 재생
+alarm_time       =
+
+[window]
+# 창 닫기(X) 를 누르면 트레이로 (1) / 종료 (0)
+close_to_tray    = 0
+# Windows 작업 표시줄 미리보기 버튼(이전·재생·다음) + 진행 표시
+taskbar_buttons  = 1
+# 전역 단축키 (다른 프로그램을 쓰는 중에도) — 1 = 켬
+global_hotkeys   = 1
+# 전역 단축키 지정 (동작=키;...)  동작: toggle next prev vol_up vol_down show
+hotkeys          = toggle=Ctrl+Alt+Space;next=Ctrl+Alt+Right;prev=Ctrl+Alt+Left;vol_up=Ctrl+Alt+Up;vol_down=Ctrl+Alt+Down;show=Ctrl+Alt+P
+# Windows 미디어 제어(볼륨 팝업·잠금 화면) — winrt 패키지가 있을 때만 동작
+smtc             = 1
+"""
+
+
+# config.txt 키 → 기본값 (타입 판별용)
+FILE_DEFAULTS = {
+    "log_level": "INFO", "log_dir": "log", "log_max_size_kb": 1024, "log_max_files": 8,
+    "data_dir": "data", "start_folder": "",
+    "resume_on_start": True, "repeat": "all", "shuffle": False,
+    "theme": "sunny", "follow_system_dark": False, "always_on_top": False, "spectrum": True, "lyrics_font_pt": 13, "mini_opacity": 0.85,
+    "lyrics_local": True, "lyrics_embedded": True, "lyrics_alsong": True, "lyrics_lrclib": True,
+    "lyrics_netease": False, "lyrics_min_score": 55, "lyrics_notfound_days": 7, "lyrics_save_beside": False, "lyrics_cache_max": 5000,
+    "lyrics_timeout_s": 6, "lyrics_offset_ms": 0, "alsong_enc_data": "",
+    "lyric_show_pron": True, "lyric_show_trans": True, "mini_font_pt": 18, "mini_click_through": False,
+    "audio_backend": "qt", "replaygain": "track", "preamp_db": 0, "crossfade_s": 0, "sleep_fade_s": 30,
+    "eq_enabled": False, "eq_bands": "0,0,0,0,0,0,0,0,0,0", "sound": "", "waveform": True,
+    "skip_silence": False, "resume_long": True,
+    "folder_include_sub": True, "folder_sort": "name",
+    "library_folders": "", "history_enabled": True, "close_to_tray": False,
+    "layout": "simple", "tooltip_delay_ms": 500, "follow_system_accent": False,
+    "font_size": 10, "font_auto": True, "font_hinting": "auto", "font_engine": "auto", "ui_scale_rounding": "passthrough", "wave_height": 44,
+    "menu_bar": True, "topbar_ticker": True, "ticker_market": "KRW-XRP", "ticker_interval_s": 10, "topbar_clock": True,
+    "topbar_clock_seconds": True,
+    "end_action": "stop", "alarm_time": "",
+    "taskbar_buttons": True, "global_hotkeys": True,
+    "hotkeys": "toggle=Ctrl+Alt+Space;next=Ctrl+Alt+Right;prev=Ctrl+Alt+Left;vol_up=Ctrl+Alt+Up;vol_down=Ctrl+Alt+Down;show=Ctrl+Alt+P",
+    "smtc": True,
+}
+
+
+# state.json 키 → 기본값
+STATE_DEFAULTS = {
+    "volume": 70, "muted": False, "time_remaining": False,
+    "last_index": -1, "last_position_ms": 0,
+    "geometry": "", "splitter": "", "mini_lyrics": False, "mini_geometry": "",
+    "lyrics_offsets": {},
+    "speed": 1.0, "pitch_st": 0, "last_home_day": "",
+    "last_folder": "", "folds": {},
+    "last_page": "now", "side_panel": "lyrics", "splitter_simple": "", "help_overlay_shown": False, "lib_view": "tree", "grid_size": 120,
+    "resume_pos": {},
+    "theme_migrated": False,
+    "last_quote": {},
+    "now_split": [],          # vr0.1.0.015: 지금 재생 블럭 높이 [곡 정보, 소리 시각화, 다음 곡] (끌어서 조절)
+    "vis_mode": "chart",      # vr0.1.0.014: 비주얼라이저 모드 bars / wave / radial / gram / chart (v027 원형 · 스펙트로그램)
+    "vis_bar_style": "round",  # vr0.1.0.027: 스펙트럼 막대 모양 round / led / mirror / reflex
+}
+# (v019 정리) 위 표에서 주석이 한 줄에 몰려 있던 항목 설명:
+#   resume_pos      vr0.1.0.010: 긴 파일 이어 듣기 {곡 uid: ms} (최근 200개)
+#   theme_migrated  vr0.1.0.011: 이전 기본(neon) → sunny 한 번만 바꿈
+#   last_quote      vr0.1.0.012: 마지막 시세 (다음 실행 때 첫 갱신 전까지 흐리게 표시)
+
+
+CHOICES = {"log_level": ("DEBUG", "INFO", "WARNING", "ERROR"), "repeat": ("off", "all", "one"),
+           "theme": ("sunny", "clean_blue", "mint", "cherry", "night_sunny", "neon", "dark", "classic", "light",
+                     "light1", "light2", "light3", "light4", "light5", "dark1", "dark2", "dark3", "dark4", "dark5"), "folder_sort": ("name", "title", "added"), "audio_backend": ("qt", "mpv"),
+           "replaygain": ("off", "track", "album"), "layout": ("simple", "classic"),
+           "end_action": ("stop", "sleep", "shutdown")}
+
+
+LIMITS = {"log_max_size_kb": (16, 1024 * 1024), "log_max_files": (1, 100), "lyrics_font_pt": (8, 40),
+          "lyrics_timeout_s": (1, 60), "lyrics_min_score": (0, 100), "lyrics_notfound_days": (0, 365), "lyrics_cache_max": (0, 1_000_000), "mini_opacity": (0.2, 1.0), "lyrics_offset_ms": (-60000, 60000),
+          "mini_font_pt": (8, 60), "preamp_db": (-12, 12), "crossfade_s": (0, 12), "sleep_fade_s": (0, 120),
+          "tooltip_delay_ms": (0, 3000), "ticker_interval_s": (5, 3600)}

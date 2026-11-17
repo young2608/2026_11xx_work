@@ -1,0 +1,14 @@
+# 가사 후보 점수 (vr0.1.0.011) — PC lyrics/score.py · Android lyrics/Score.kt 같은 값
+# 검색제목|검색가수|검색앨범|곡길이초|후보제목|후보가수|후보앨범|후보가사(\n=줄바꿈)|후보길이초|점수
+좋은 날|아이유|Real|233|좋은 날|아이유|Real|[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n|0|100
+좋은 날 (Good Day)|아이유 (IU)||233|좋은날|IU||[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n[00:01.00]a\n|234|100
+Dynamite|BTS||199|Dynamite (Day Ver.)|방탄소년단||[00:01.00]x|0|45
+Stay|The Kid LAROI||141|Stay|Justin Bieber|||300|5
+밤편지|아이유||253|밤 편지|아이유||[00:10.00]a\n[04:30.00]b|0|45
+밤편지|아이유||253|밤편지|아이유||[00:10.00]a\n[03:30.00]b|0|85
+Love Dive|IVE||177|LOVE DIVE|IVE (아이브)||[00:01.00]a|178|87
+사건의 지평선|윤하|END THEORY|300|사건의 지평선|윤하 (YOUNHA)|END THEORY : Final Edition||0|67
+Hype Boy|NewJeans||179|Hype Bo|New Jeans||[00:01.00]a|190|75
+Unknown|||0|Unknown Song|Someone||plain lyric|0|50
+Spring Day|BTS||274|봄날|방탄소년단||[00:01.00]a|274|20
+Cupid (Twin Ver.)|FIFTY FIFTY||174|Cupid|FIFTY FIFTY||[00:01.00]a|174|95

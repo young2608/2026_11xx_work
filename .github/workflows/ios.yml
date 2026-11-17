@@ -1,0 +1,74 @@
+# yMp3Player iOS 빌드 (vr0.1.0.028, f55) — GitHub Actions macOS 에서 서명 없는 .ipa
+#   실행: build_all.cmd ios  (= build.sh ios → gh workflow run → 기다림 → dist/ 로 받기)  또는 GitHub 웹 Actions → "iOS build" → Run workflow
+#   결과: 아티팩트 ipa = yMp3Player_<버전>_ios_unsigned.ipa → Windows 의 Sideloadly 로 무료 Apple ID 서명 · 설치 (7일)
+#   비용: 공개 저장소 = 무료, 비공개 저장소 = macOS 는 무료 시간의 10배로 차감 (한 번 약 5~10분)
+name: iOS build
+on:
+  push:                         # v029: build_all.cmd ios 가 이 브랜치에 올리면 자동 빌드 (기존 저장소의 main 은 건드리지 않음)
+    branches: [ymp3player]
+  workflow_dispatch:
+    inputs:
+      build_time:
+        description: "빌드 시각 (PC · Android 와 같은 값, 비우면 지금 KST)"
+        required: false
+        default: ""
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 도구 (XcodeGen) · 버전
+        run: |
+          brew install xcodegen
+          xcodebuild -version
+          swift --version
+
+      - name: 생성 (버전 · 테마 표 · 빌드 시각)
+        env:
+          BT: ${{ github.event.inputs.build_time }}
+        run: |
+          if [ -n "$BT" ]; then python3 src/ios/tools/gen_ios.py --build-time "$BT"
+          else python3 src/ios/tools/gen_ios.py --keep-build-time; fi      # push: PC 가 넣은 빌드 시각 (exe · apk 와 같음)
+          echo "YAMP_VER=$(python3 src/pc/yamp/version.py)" >> "$GITHUB_ENV"
+
+      - name: 계산 테스트 (YampCore · PC/Android 공용 값)
+        working-directory: src/ios/YampCore
+        run: swift test
+
+      - name: Xcode 프로젝트 만들기
+        working-directory: src/ios
+        run: xcodegen generate
+
+      - name: 빌드 (서명 없음)
+        working-directory: src/ios
+        run: |
+          set -o pipefail
+          xcodebuild -project yMp3Player.xcodeproj -scheme yMp3Player -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee xcodebuild.log | grep -E "error:|warning: .*\.swift|\*\* BUILD" || true
+          test -d build/Build/Products/Release-iphoneos/yMp3Player.app
+
+      - name: ipa 묶기
+        working-directory: src/ios
+        run: |
+          mkdir -p out/Payload
+          cp -R build/Build/Products/Release-iphoneos/yMp3Player.app out/Payload/
+          cd out && zip -qry "yMp3Player_${YAMP_VER}_ios_unsigned.ipa" Payload && ls -l *.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipa
+          path: src/ios/out/*.ipa
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-build-log
+          path: src/ios/xcodebuild.log
+          retention-days: 7

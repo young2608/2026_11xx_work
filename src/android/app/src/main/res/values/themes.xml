@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- vr0.1.0.011 (f19): 시작 화면 = 기본 테마 '써니' (흰 바탕 · 어두운 상태 막대 아이콘).
+         앱이 뜨면 SystemBars 가 고른 테마 색 · 아이콘 밝기로 바꿈 -->
+    <style name="Theme.YAmp" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/yamp_bg</item>
+        <item name="android:statusBarColor">@color/yamp_bg</item>
+        <item name="android:navigationBarColor">@color/yamp_nav</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

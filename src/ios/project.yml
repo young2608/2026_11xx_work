@@ -1,0 +1,45 @@
+# yMp3Player iOS — XcodeGen 프로젝트 정의 (vr0.1.0.028, f55)
+#   xcodegen generate  →  yMp3Player.xcodeproj  (Mac / GitHub Actions macOS 에서. Windows 에서는 만들지 않음)
+#   버전 두 줄은 tools/gen_ios.py 가 src/pc/yamp/version.py 로 채움 (손으로 고치지 않음)
+name: yMp3Player
+options:
+  bundleIdPrefix: com.ascen
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+packages:
+  YampCore:
+    path: YampCore
+targets:
+  yMp3Player:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    dependencies:
+      - package: YampCore
+    scheme: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ascen.yamp
+        PRODUCT_NAME: yMp3Player
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "100029"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_BITCODE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: yMp3Player
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UIBackgroundModes: [audio]
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UIApplicationSupportsIndirectInputEvents: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]

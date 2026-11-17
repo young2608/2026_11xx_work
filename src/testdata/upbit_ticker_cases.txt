@@ -1,0 +1,50 @@
+# 업비트 시세 · KST 표시 (vr0.1.0.012) — PC domain/ticker.py · Android domain/Ticker.kt 같은 결과
+# price|값|표시   rate|change|rate|표시   cp|값|기준가|표시   won|값|표시   kst|epoch_ms|seconds(1/0)|date(1/0)|표시   interval|fails|base|초   markets|입력|결과(;)
+# sample = testdata/upbit_ticker_sample.json → KRW-XRP 3512 RISE 43 0.0123955030 고가 3540 저가 3455 24h 1234567890123.4 ts 1794218167000
+price|3512.0|₩3,512
+price|3512.5|₩3,513
+price|999.5|₩1,000
+price|100.0|₩100
+price|99.995|₩100.00
+price|12.344|₩12.34
+price|12.345|₩12.35
+price|1.0|₩1.00
+price|0.99995|₩1.0000
+price|0.51234|₩0.5123
+price|0.00012|₩0.0001
+price|123456789.0|₩123,456,789
+price|0.0|₩0.0000
+rate|RISE|0.0124|▲1.24%
+rate|RISE|0.012345|▲1.23%
+rate|FALL|-0.0085|▼0.85%
+rate|FALL|-5e-05|▼0.01%
+rate|EVEN|0.0|0.00%
+rate|RISE|0.1|▲10.00%
+rate|FALL|-0.123456|▼12.35%
+cp|43.0|3512.0|+43
+cp|-12.5|3512.0|-13
+cp|0.0|3512.0|0
+cp|-0.0123|0.5|-0.0123
+cp|1.5|12.0|+1.50
+cp|1500.0|95000000.0|+1,500
+won|1230000000000.0|1.2조원
+won|456700000000.0|4,567억원
+won|1200000000.0|12억원
+won|50000000.0|50,000,000원
+kst|1794218167000|1|1|11-09(월) 18:56:07 KST
+kst|1794218167000|0|0|18:56 KST
+kst|1767225599000|1|1|01-01(목) 08:59:59 KST
+kst|1767225600000|1|1|01-01(목) 09:00:00 KST
+kst|0|1|1|01-01(목) 09:00:00 KST
+interval|0|10|10
+interval|2|10|10
+interval|3|10|30
+interval|5|10|30
+interval|6|10|60
+interval|9|10|60
+interval|0|3|5
+interval|4|45|45
+interval|7|120|120
+markets||KRW-XRP
+markets|krw-xrp|KRW-XRP
+markets| KRW-XRP , krw-btc;KRW-XRP|KRW-XRP;KRW-BTC

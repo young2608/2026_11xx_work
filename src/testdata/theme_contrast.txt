@@ -1,0 +1,22 @@
+# 대비 검사 규칙 (WCAG): 앞 토큰 | 뒤 토큰 | 최소 대비
+text|bg|4.5
+text|surface|4.5
+text|surface2|4.5
+text|nav|4.5
+dim|bg|4.5
+dim|surface|4.5
+accent_text|bg|4.5
+accent_text|surface|4.5
+accent_text|fill1_soft|4.5
+text|fill1_soft|4.5
+on_fill|fill1|3.0
+on_fill|fill2|4.5
+lcd_fg|lcd_bg|4.5
+wave_played|bg|3.0
+text|tooltip_bg|4.5
+rise|bg|4.5
+fall|bg|4.5
+rise|nav|4.5
+fall|nav|4.5
+rise|flash_rise|4.5
+fall|flash_fall|4.5

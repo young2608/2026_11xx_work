@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">yMp3Player</string>
+    <string name="widget_desc">yMp3Player 재생 위젯 (제목 · 가사 · 재생 버튼)</string>
+</resources>

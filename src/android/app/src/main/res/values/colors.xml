@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 기본 테마 '써니' 색 (vr0.1.0.011, testdata/themes.txt 와 같은 값) — 앱 시작 화면 · 위젯 첫 모습.
+     실제 화면 · 위젯 색은 코드(ThemeTable)가 고른 테마로 칠함 -->
+<resources>
+    <color name="yamp_bg">#FFFFFFFF</color>
+    <color name="yamp_nav">#FFFFFBF2</color>
+    <color name="yamp_text">#FF2B2B2B</color>
+    <color name="yamp_accent_text">#FFC2410C</color>
+    <color name="yamp_line">#FFF0E3C6</color>
+</resources>

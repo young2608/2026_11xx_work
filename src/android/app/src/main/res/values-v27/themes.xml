@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- API 27+: 내비 막대 아이콘도 어둡게 (밝은 기본 테마 '써니') -->
+    <style name="Theme.YAmp" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/yamp_bg</item>
+        <item name="android:statusBarColor">@color/yamp_bg</item>
+        <item name="android:navigationBarColor">@color/yamp_nav</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>
