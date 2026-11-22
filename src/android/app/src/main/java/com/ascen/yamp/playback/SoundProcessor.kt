@@ -67,6 +67,8 @@ class SoundProcessor : BaseAudioProcessor() {
     private var proc: Dsp.Processor? = null
     private var builtVersion = -1
     private var tmp = DoubleArray(0)
+    private var sbuf = ShortArray(0)        // v032 (f60 A1): 16bit 한 번에 읽고 쓰기
+    private var fbuf = FloatArray(0)        //               float
     private var errLogged = false
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
@@ -110,16 +112,34 @@ class SoundProcessor : BaseAudioProcessor() {
         val n = remaining / bps
         if (tmp.size < n) tmp = DoubleArray(n)
         val t = tmp
-        if (float) for (i in 0 until n) t[i] = inputBuffer.getFloat().toDouble()
-        else for (i in 0 until n) t[i] = inputBuffer.getShort() / PCM16_SCALE
+        // v032 (f60 A1): 표본마다 getShort()/putShort() (위치 · 범위 검사가 표본마다) → 배열로 한 번에 읽고 한 번에 씀.
+        //   값 · 반올림은 그대로 (같은 바이트 순서: asShortBuffer/asFloatBuffer 는 원래 버퍼의 순서(기기 순서)를 따름)
+        if (float) {
+            if (fbuf.size < n) fbuf = FloatArray(n)
+            val f = fbuf
+            inputBuffer.asFloatBuffer().get(f, 0, n)
+            inputBuffer.position(inputBuffer.position() + n * 4)
+            for (i in 0 until n) t[i] = f[i].toDouble()
+        } else {
+            if (sbuf.size < n) sbuf = ShortArray(n)
+            val sh = sbuf
+            inputBuffer.asShortBuffer().get(sh, 0, n)
+            inputBuffer.position(inputBuffer.position() + n * 2)
+            for (i in 0 until n) t[i] = sh[i] / PCM16_SCALE
+        }
         p.process(t, n - n % channels)
         if (float) {
-            for (i in 0 until n) out.putFloat(t[i].toFloat())
+            val f = fbuf
+            for (i in 0 until n) f[i] = t[i].toFloat()
+            out.asFloatBuffer().put(f, 0, n)
+            out.position(out.position() + n * 4)
         } else {
+            val sh = sbuf
             for (i in 0 until n) {
-                val v = (t[i] * PCM16_SCALE).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-                out.putShort(v.toShort())
+                sh[i] = (t[i] * PCM16_SCALE).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
             }
+            out.asShortBuffer().put(sh, 0, n)
+            out.position(out.position() + n * 2)
         }
         // 프레임 단위가 아닌 남은 바이트 (정상이면 없음)
         while (inputBuffer.hasRemaining()) out.put(inputBuffer.get())
@@ -143,5 +163,7 @@ class SoundProcessor : BaseAudioProcessor() {
         channels = 0
         sampleRate = 0
         tmp = DoubleArray(0)
+        sbuf = ShortArray(0)
+        fbuf = FloatArray(0)
     }
 }

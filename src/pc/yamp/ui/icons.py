@@ -137,57 +137,97 @@ def paint(device, name: str, color: str, stroke: float = 2.0, rect: QRectF | Non
     p.end()
 
 
-def _swatch_pm(colors, on: bool, side: int) -> QPixmap:
-    S = side * 2
-    pm = QPixmap(S, S)
-    pm.fill(Qt.GlobalColor.transparent)
-    p = QPainter(pm)
+def _swatch_draw(p: QPainter, S: float, colors, on: bool, s=None):
+    """색 견본 한 장을 S×S 실제 픽셀에 그림 (선 굵기 · 모서리는 S 에 비례 — 예전 36px 그림과 같은 비율)"""
+    u = S / 36.0
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     clip = QPainterPath()
-    clip.addRoundedRect(QRectF(2, 2, S - 4, S - 4), 7, 7)
+    clip.addRoundedRect(QRectF(2 * u, 2 * u, S - 4 * u, S - 4 * u), 7 * u, 7 * u)
     p.setClipPath(clip)
     if colors:
         cw = S / len(colors)
         for i, c in enumerate(colors):
             p.fillRect(QRectF(i * cw, 0, cw + 1, S), QColor(c))
     p.setClipping(False)
-    s = skin.current()
-    p.setPen(QPen(QColor(s.fill2 if on else s.knob_rim), 3 if on else 2))
+    s = s or skin.current()
+    p.setPen(QPen(QColor(s.fill2 if on else s.knob_rim), max(1.0, (3 if on else 2) * u)))
     p.setBrush(Qt.BrushStyle.NoBrush)
     p.drawPath(clip)
     if on:                                     # 고른 것: 가운데 체크 표시 (흰 원 + 진회색 체크)
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor(s.surface))
         p.drawEllipse(QPointF(S / 2, S / 2), S * 0.26, S * 0.26)
-        pen = QPen(QColor(s.accent_text), 3)
+        pen = QPen(QColor(s.accent_text), max(1.0, 3 * u))
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         p.setPen(pen)
         ck = QPainterPath()
         ck.moveTo(S * 0.38, S * 0.5); ck.lineTo(S * 0.47, S * 0.6); ck.lineTo(S * 0.63, S * 0.41)
         p.drawPath(ck)
+
+
+def _swatch_pm(colors, on: bool, side: int, ratio: float = 2.0) -> QPixmap:
+    """(예전 이름 그대로) 고정 배율 그림 한 장"""
+    S = max(1, round(side * ratio))
+    pm = QPixmap(S, S)
+    pm.fill(Qt.GlobalColor.transparent)
+    p = QPainter(pm)
+    _swatch_draw(p, S, colors, on)
     p.end()
-    pm.setDevicePixelRatio(2.0)
+    pm.setDevicePixelRatio(ratio)
     return pm
+
+
+class _SwatchEngine(QIconEngine):
+    """v033 (f61 H8): 색 견본 · 켜기 표시도 요청 크기 × 화면 배율로 그때그때 그림 (예전: 2배 그림 1장 →
+    큰 글자(메뉴 아이콘이 커짐) · 300 % 화면에서 늘려 흐림). 그릴 때의 테마 색을 기억 (테마가 바뀌면 apply_skin 이 새로 만듦)"""
+
+    def __init__(self, off_colors, on_colors):
+        super().__init__()
+        self.off_colors, self.on_colors = tuple(off_colors), tuple(on_colors)
+        self.s = skin.current()
+        self._cache: dict = {}
+
+    def scaledPixmap(self, size, mode, state, scale):
+        on = state == QIcon.State.On
+        key = (size.width(), size.height(), on, float(scale))
+        pm = self._cache.get(key)
+        if pm is None:
+            S = max(1, round(min(size.width(), size.height()) * scale))
+            pm = QPixmap(S, S)
+            pm.fill(Qt.GlobalColor.transparent)
+            p = QPainter(pm)
+            if mode == QIcon.Mode.Disabled:
+                p.setOpacity(0.38)
+            _swatch_draw(p, S, self.on_colors if on else self.off_colors, on, self.s)
+            p.end()
+            pm.setDevicePixelRatio(scale)
+            if len(self._cache) > 8:
+                self._cache.clear()
+            self._cache[key] = pm
+        return pm
+
+    def pixmap(self, size, mode, state):
+        return self.scaledPixmap(size, mode, state, 1.0)
+
+    def paint(self, painter, rect, mode, state):
+        d = float(painter.device().devicePixelRatioF()) if painter.device() is not None else 1.0
+        painter.drawPixmap(rect, self.scaledPixmap(rect.size(), mode, state, d))
+
+    def clone(self):
+        e = _SwatchEngine(self.off_colors, self.on_colors)
+        e.s = self.s
+        return e
 
 
 def swatch(colors, side: int = 18) -> QIcon:
     """테마 메뉴 색 견본 (3칸: 배경 · fill1 · fill2). 체크된 메뉴 항목은 On 그림 (테두리 + 체크)"""
-    ic = QIcon()
-    ic.addPixmap(_swatch_pm(colors, False, side), QIcon.Mode.Normal, QIcon.State.Off)
-    ic.addPixmap(_swatch_pm(colors, True, side), QIcon.Mode.Normal, QIcon.State.On)
-    ic.addPixmap(_swatch_pm(colors, True, side), QIcon.Mode.Active, QIcon.State.On)
-    ic.addPixmap(_swatch_pm(colors, False, side), QIcon.Mode.Active, QIcon.State.Off)
-    return ic
+    return QIcon(_SwatchEngine(colors, colors))
 
 
 def toggle(side: int = 18) -> QIcon:
     """켜고 끄는 메뉴 항목 표시 (끔: 빈 칸 / 켬: 채움 + 체크) — 테마 색"""
     s = skin.current()
-    ic = QIcon()
-    for mode in (QIcon.Mode.Normal, QIcon.Mode.Active):
-        ic.addPixmap(_swatch_pm((s.surface,), False, side), mode, QIcon.State.Off)
-        ic.addPixmap(_swatch_pm((s.fill1,), True, side), mode, QIcon.State.On)
-    return ic
+    return QIcon(_SwatchEngine((s.surface,), (s.fill1,)))
 
 
 # ---- 테마가 바뀌면 다시 칠할 고정 아이콘 (검색 칸 돋보기 · 탭 아이콘 등) — bind(owner, setter, 이름, 토큰)

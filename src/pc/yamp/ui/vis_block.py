@@ -22,7 +22,7 @@ import time
 
 from ..domain.vis_math import (BAR_STYLES, DB_FLOOR, DB_GRID, VIS_BANDS, VIS_MODES, BandSmoother,  # noqa: F401
                                GramHistory, db_y, next_bar_style, peaks_window, smooth_curve, to_db)
-from . import vis_draw
+from . import metrics, vis_draw
 
 MODES = VIS_MODES                  # v027: bars · wave · radial · gram · chart
 HIST_S = 10.0
@@ -38,11 +38,12 @@ class VisView(QWidget):
         self.bar_style = "round"                       # v027: round · led · mirror · reflex
         self.gram = GramHistory(VIS_BANDS)             # v027: 스펙트로그램 기록 (이 모드일 때만 쌓음)
         self.hist: deque = deque(maxlen=int(HIST_S * FPS))      # (rms, peak)
+        self._hist_db: deque = deque(maxlen=self.hist.maxlen)   # v032 (f60 P1): 같은 칸의 (rms dB, 피크 dB) — 넣을 때 한 번만 계산
         self.cur_db = DB_FLOOR
         self.fallback = False
         self.gain = 1.0                                   # (v017 파동 자동 키움 — 오실로스코프와 함께 쓰지 않음, 호환용)
         self._t = None
-        self.setMinimumHeight(180)
+        metrics.fix(self, min_h=180)  # v033 (f61 H5): 글자 배율
 
     # 예전 이름 (v025 까지): 지금 보이는 막대 높이 · 꼭대기
     bands = property(lambda self: self.sm.v)
@@ -51,8 +52,19 @@ class VisView(QWidget):
     # ---- 데이터
     def push_frame(self, wave, rms, peak):
         self.fallback = False
-        self.hist.append((rms, peak))
+        self._hist_add(rms, peak)
         self.cur_db = to_db(peak)
+
+    def _hist_add(self, rms, peak):
+        """레벨 기록 한 칸 + 그 dB (v032 f60 P1: 전에는 그릴 때마다 300칸 × 2 번 log10 — 기본 모드 '레벨' 프레임 시간의 약 40 %)"""
+        self.hist.append((rms, peak))
+        self._hist_db.append((to_db(rms), to_db(peak)))
+
+    def _hist_dbs(self):
+        """(rms dB, 피크 dB) 목록 — hist 를 밖에서 직접 바꿨으면(예전 코드 · 테스트) 다시 계산해 맞춤"""
+        if len(self._hist_db) != len(self.hist):
+            self._hist_db = deque(((to_db(r), to_db(p)) for r, p in self.hist), maxlen=self.hist.maxlen)
+        return self._hist_db
 
     def push_bands(self, lv):
         self.sm.set_target(lv)
@@ -63,7 +75,7 @@ class VisView(QWidget):
         win = peaks_window(peaks, pos_ms, dur_ms, 256)
         self.wave = win
         lvl = win[len(win) // 2] if win else 0.0
-        self.hist.append((lvl * 0.7, lvl))
+        self._hist_add(lvl * 0.7, lvl)
         self.cur_db = to_db(lvl)
         n = self.sm.n
         self.sm.set_target([win[int(i * (len(win) - 1) / (n - 1))] if win else 0.0 for i in range(n)])
@@ -80,6 +92,7 @@ class VisView(QWidget):
 
     def clear(self):
         self.hist.clear()
+        self._hist_db.clear()
         self.wave = [0.0] * 256
         self.sm.reset()
         self.gram.clear()
@@ -93,11 +106,13 @@ class VisView(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         path = QPainterPath()
-        path.addRoundedRect(r, 10, 10)
+        rad = metrics.dp(10)                              # v033 (f61 H6): 모서리 · 안쪽 여백도 글자 배율 (10pt = 그대로)
+        path.addRoundedRect(r, rad, rad)
         p.fillPath(path, QColor(s.graph_bg))
         p.setPen(QPen(QColor(s.line), 1))
         p.drawPath(path)
-        inner = r.adjusted(10, 8, -10, -8)
+        mx, my = metrics.dp(10), metrics.dp(8)
+        inner = r.adjusted(mx, my, -mx, -my)
         getattr(self, "_draw_" + self.mode, self._draw_chart)(p, inner, s)
         if self.fallback:
             p.setPen(QColor(s.dim))
@@ -105,33 +120,45 @@ class VisView(QWidget):
             p.drawText(inner, int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom), "파일 파형 기준")
         p.end()
 
+    def _chart_cols(self):
+        """v033 (f61 H6): 눈금 글자 칸 · 지금 dB 칸 폭을 글꼴로 잼 — 전에는 28 · 44px 고정이라 큰 글자(13~16pt)에서
+        '-12 dB' 가 '2 dB' 처럼 잘렸음. 10pt 는 글자가 칸보다 작아 예전 값 그대로 (그림 같음)"""
+        ft = QFontMetrics(skinmod.role_font(self.font(), "tiny"))
+        fb = QFontMetrics(skinmod.role_font(self.font(), "body", bold=True))
+        lab_w = max(28, ft.horizontalAdvance("-48"))
+        db_w = max(44, fb.horizontalAdvance("-60 dB"))
+        return lab_w, db_w, max(18, fb.height())
+
     def _grid(self, p, r, s, labels=True):
         f = skinmod.role_font(self.font(), "tiny")
         p.setFont(f)
         th = QFontMetrics(f).height()
+        lab_w = self._chart_cols()[0]
         last = -1e9
         for db in DB_GRID:
             y = round(db_y(db, r.top(), r.height())) + 0.5
             p.setPen(QPen(QColor(s.graph_grid), 1, Qt.PenStyle.DashLine))
-            p.drawLine(QPointF(r.left() + 30, y), QPointF(r.right(), y))
+            p.drawLine(QPointF(r.left() + lab_w + 2, y), QPointF(r.right(), y))
             if labels and y - last >= th:                # v016: 눈금 글자끼리 겹치면 건너뜀 (큰 글자 · 낮은 블럭)
                 last = y
                 p.setPen(QColor(s.dim))
-                p.drawText(QRectF(r.left(), y - th / 2, 28, th), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), f"{db}")
+                p.drawText(QRectF(r.left(), y - th / 2, lab_w, th), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), f"{db}")
 
     def _draw_chart(self, p, r, s):
         self._grid(p, r, s)
-        plot = r.adjusted(32, 0, -46, 0)
+        lab_w, db_w, db_h = self._chart_cols()
+        plot = r.adjusted(lab_w + 4, 0, -(db_w + 2), 0)
         n = self.hist.maxlen or 1
         if self.hist:
             step = plot.width() / max(1, n - 1)
             x0 = plot.right() - (len(self.hist) - 1) * step
             area = QPainterPath(QPointF(x0, plot.bottom()))
             line = QPainterPath()
-            for i, (rms, pk) in enumerate(self.hist):
+            top, ph = plot.top(), plot.height()
+            for i, (rd, pd) in enumerate(self._hist_dbs()):   # v032 (f60 P1): dB 는 넣을 때 계산해 둔 값 (y 식은 db_y 와 같음)
                 x = x0 + i * step
-                area.lineTo(x, db_y(to_db(rms), plot.top(), plot.height()))
-                y2 = db_y(to_db(pk), plot.top(), plot.height())
+                area.lineTo(x, top + ph * (min(0.0, rd) / DB_FLOOR))
+                y2 = top + ph * (min(0.0, pd) / DB_FLOOR)
                 line.moveTo(x, y2) if i == 0 else line.lineTo(x, y2)
             area.lineTo(plot.right(), plot.bottom())
             area.closeSubpath()
@@ -149,7 +176,7 @@ class VisView(QWidget):
         clip = self.cur_db > -0.5
         p.setPen(QColor(s.rise if clip else s.accent_text))
         txt = "—" if self.cur_db <= DB_FLOOR else f"{self.cur_db:.0f} dB"
-        p.drawText(QRectF(r.right() - 44, r.top(), 44, 18), int(Qt.AlignmentFlag.AlignRight), txt)
+        p.drawText(QRectF(r.right() - db_w, r.top(), db_w, db_h), int(Qt.AlignmentFlag.AlignRight), txt)
 
     @staticmethod
     def _curve(vals, r, mid, amp, sign):
@@ -226,9 +253,9 @@ class VisBlock(QWidget):
         self.view.bar_style = bs if bs in BAR_STYLES else "round"
         v = QVBoxLayout(self)
         v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(6)
+        metrics.spacing(v, 6)
         row = QHBoxLayout()
-        row.setSpacing(2)
+        metrics.spacing(row, 2)
         self.mode_row = row                 # Section 제목 줄로 옮겨 붙일 수 있음 (지금 재생 페이지)
         self.btns = {}
         for mode, icon, key in (("bars", "eq", "vis_bars"), ("wave", "wave", "vis_wave"), ("radial", "radial", "vis_radial"),

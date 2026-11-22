@@ -31,39 +31,39 @@ class NowMixin:
         from ..ui.vis_block import VisBlock
         w = QWidget()
         v = QVBoxLayout(w)
-        v.setContentsMargins(20, 12, 20, 12)
+        metrics.margins(v, 20, 12, 20, 12)
         v.setSpacing(0)
         # ---- 곡 정보
         body = QWidget()
         cv = QHBoxLayout(body)
-        cv.setContentsMargins(8, 4, 8, 8)
-        cv.setSpacing(18)
+        metrics.margins(cv, 8, 4, 8, 8)
+        metrics.spacing(cv, 18)
         metrics.fix(self.cover, 160, 160)
         cv.addWidget(self.cover, 0, Qt.AlignmentFlag.AlignTop)
         right = QVBoxLayout()
-        right.setSpacing(4)
+        metrics.spacing(right, 4)
         from ..ui.widgets import ElideLabel
         self.now_title = ElideLabel("yMp3Player", objectName="nowTitle")      # v016: 긴 제목은 … + 마우스를 올리면 전체
         self.now_sub = ElideLabel("음악 파일·폴더를 끌어다 놓거나 아래 버튼으로 여세요", objectName="nowSub")
         for lb in (self.now_title, self.now_sub):
-            lb.setMinimumWidth(80)
+            metrics.fix(lb, min_w=80)
         right.addWidget(self.now_title)
         right.addWidget(self.now_sub)
         right.addWidget(self.info)
         lcd = QFrame(objectName="lcd")
         lh = QHBoxLayout(lcd)
-        lh.setContentsMargins(6, 4, 6, 4)
+        metrics.margins(lh, 6, 4, 6, 4)
         lh.addWidget(self.lcd)
         lh.addWidget(self.spec, 1)
         right.addWidget(lcd)
         self.empty_row = QWidget()
         er = QHBoxLayout(self.empty_row)
-        er.setContentsMargins(0, 4, 0, 0)
+        metrics.margins(er, 0, 4, 0, 0)
         er.addWidget(IconButton("addFile", "open", self.open_files, size=22))
         er.addWidget(IconButton("addFolder", "open_folder", self.open_folder, size=22))
         hint = QLabel("파일 열기 · 폴더 열기 (Ctrl+O · Ctrl+Shift+O)", objectName="emptyHint")
         hint.setWordWrap(True)
-        hint.setMinimumWidth(60)
+        metrics.fix(hint, min_w=60)
         er.addWidget(hint, 1)
         right.addWidget(self.empty_row)
         right.addStretch(1)
@@ -78,7 +78,7 @@ class NowMixin:
         self.sec_vis.head.addLayout(self.vis.mode_row)              # 모드 버튼은 제목 줄 오른쪽 (세로 공간 절약)
         # ---- 다음 곡
         self.up_next = QListWidget(objectName="upNext")
-        self.up_next.setMinimumHeight(60)
+        metrics.fix(self.up_next, min_h=60)
         self.up_next.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.up_next.itemDoubleClicked.connect(self._play_up_next)
         self.sec_next = Section("다음 곡", "main.next", self.cfg, self.up_next)
@@ -176,6 +176,7 @@ class NowMixin:
     def effective_font_pt(self) -> float:
         """v023: font_auto = 화면 크기에 맞춘 pt / 아니면 font_size"""
         if self.cfg["font_auto"]:
+            metrics.USE_DPI = bool(self.cfg["font_auto_dpi"])          # v033 (f61 H1)
             return float(metrics.screen_font_pt(self if self.isVisible() else None))
         return float(self.cfg["font_size"])
 

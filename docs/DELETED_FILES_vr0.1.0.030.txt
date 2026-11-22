@@ -1,0 +1,5 @@
+src/ios/App/Library.swift
+src/ios/App/NowPlayingView.swift
+src/ios/App/PlayerEngine.swift
+src/ios/App/Theme.swift
+src/ios/App/VisualizerView.swift

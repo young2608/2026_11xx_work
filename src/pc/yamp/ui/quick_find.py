@@ -11,7 +11,7 @@ import os
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QDialog, QLineEdit, QListWidget, QListWidgetItem, QVBoxLayout
 
-from . import icons, tips
+from . import icons, metrics, tips
 
 MAX_TRACKS = 30
 ROLE = Qt.ItemDataRole.UserRole
@@ -38,14 +38,14 @@ class QuickFind(QDialog):
     def __init__(self, win, commands: dict):
         super().__init__(win, Qt.WindowType.Popup)
         self.win, self.ctrl, self.commands = win, win.ctrl, commands
-        self.setMinimumWidth(560)
+        metrics.fix(self, min_w=560)  # v033 (f61 H5): 글자 배율
         v = QVBoxLayout(self)
-        v.setContentsMargins(8, 8, 8, 8)
+        metrics.margins(v, 8, 8, 8, 8)
         self.edit = QLineEdit()
         self.edit.addAction(icons.icon("search", "dim"), QLineEdit.ActionPosition.LeadingPosition)
         tips.apply(self.edit, "quick_find")
         self.list = QListWidget()
-        self.list.setMinimumHeight(320)
+        metrics.fix(self.list, min_h=320)  # v033 (f61 H5): 글자 배율
         v.addWidget(self.edit)
         v.addWidget(self.list)
         self.edit.textChanged.connect(self.refresh)

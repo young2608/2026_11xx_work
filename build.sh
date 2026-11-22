@@ -136,16 +136,23 @@ exe() {
         if [ -f "$mpvdll" ]; then MPV_ARGS=(--add-binary "$(winpath "$mpvdll");."); echo "libmpv 동봉: $mpvdll"; break; fi
     done
     [ ${#MPV_ARGS[@]} -eq 0 ] && echo "libmpv 없음 → Qt 엔진만 (EQ·음정 쓰려면: ./build.sh deps mpv)"
+    # v033 (f61 H7): 앱 아이콘 .ico (16~256px 10가지, yamp/ui/app_icon.py) → exe 파일 · 작업 표시줄 아이콘. 실패해도 빌드는 계속
+    local ICON_ARGS=()
+    if (cd "$PC" && QT_QPA_PLATFORM=offscreen "$PY" tools/make_icon.py build/yMp3Player.ico); then
+        ICON_ARGS=(--icon "$(winpath "$PC/build/yMp3Player.ico")")
+    else
+        c_err "앱 아이콘 만들기 실패 → 기본 아이콘으로 계속"
+    fi
     c_info "PyInstaller (exe 만들기)"
     if [ "$mode" = "onefile" ]; then
         (cd "$PC" && "$PY" -m PyInstaller --noconfirm --clean --windowed --onefile --name "$BASE" \
             --distpath "$(winpath "$DIST")" --workpath build/pyi --specpath build \
-            --hidden-import PyQt6.QtMultimedia "${MPV_ARGS[@]}" main.py) || rc=1
+            --hidden-import PyQt6.QtMultimedia "${MPV_ARGS[@]}" "${ICON_ARGS[@]}" main.py) || rc=1
     else
         rm -rf "${DIST:?}/$BASE"
         (cd "$PC" && "$PY" -m PyInstaller --noconfirm --clean --windowed --name "$BASE" \
             --distpath "$(winpath "$DIST")" --workpath build/pyi --specpath build \
-            --hidden-import PyQt6.QtMultimedia "${MPV_ARGS[@]}" main.py) || rc=1
+            --hidden-import PyQt6.QtMultimedia "${MPV_ARGS[@]}" "${ICON_ARGS[@]}" main.py) || rc=1
     fi
     mv -f "$BI.bak" "$BI"
     [ $rc = 0 ] || { c_err "PyInstaller 실패"; return 1; }

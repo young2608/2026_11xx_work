@@ -65,7 +65,7 @@ def test_type_scale_five_levels_and_font_size():
         assert [skin.font_pt(r) for r in ("h1", "h2", "body", "cap", "tiny")] == [17.0, 13.0, 10.0, 9.0, 8.0]
         skin.set_font_size(12)
         assert skin.font_pt("body") == 12 and skin.font_pt("h1") == 20.5
-        assert skin.set_font_size(99) == 14 and skin.set_font_size("x") == 10
+        assert skin.set_font_size(99) == 16 and skin.set_font_size("x") == 10   # v033: 최대 16pt
         # 스타일시트의 글자 크기는 5단계 값만
         skin.set_font_size(10)
         qss = skin.stylesheet(skin.get("sunny"))
@@ -131,7 +131,7 @@ def test_window_font_menu_screen_info_covers(app, tmp_path, monkeypatch):
         st = QApplication.instance()._yamp_font
         assert st[0] == 10 and st[1] in ("full", "vertical", "none")
         # 글자 크기 메뉴 → 바로 적용
-        assert set(w.a_font_sizes) == {9, 10, 11, 12, 13, 14} and w.a_font_auto.isChecked()   # v023: 기본 = 자동 (화면 800×600 → 10pt)
+        assert set(w.a_font_sizes) == {9, 10, 11, 12, 13, 14, 15, 16} and w.a_font_auto.isChecked()   # v023: 기본 = 자동 (화면 800×600 → 10pt) · v033: 15 · 16
         w.a_font_sizes[12].trigger()
         app.processEvents()
         assert w.cfg["font_size"] == 12 and skin.font_pt("body") == 12

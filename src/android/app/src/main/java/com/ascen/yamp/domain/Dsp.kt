@@ -180,6 +180,8 @@ object Dsp {
         private val lRel = timeCoef(LIMIT_RELEASE_MS, fs)
         private val lThr = dbToLin(LIMIT_DB)
         private val makeup = dbToLin(s.compMakeupDb)
+        /** 이 값 이하의 엔벨로프는 확실히 문턱 아래 (문턱 선형값보다 1e-12 만큼 작게 — log10 오차보다 훨씬 큰 여유) */
+        private val cThrSafe = dbToLin(s.compThresholdDb) * (1 - 1e-12)
         private val frame = DoubleArray(ch)
 
         init {
@@ -215,8 +217,10 @@ object Dsp {
                 if (s.comp) {
                     val coef = if (peak > envC) cAtt else cRel
                     envC = coef * envC + (1 - coef) * peak
-                    val lvl = 20 * log10(max(envC, 1e-9))
-                    val g = dbToLin(compGainDb(lvl, s.compThresholdDb, s.compRatio)) * makeup
+                    // v032 (f60 A2): 문턱 아래가 확실하면(대부분의 표본) log10 · pow 를 건너뜀 — 그때 원래 식도
+                    //   compGainDb = 0 → dbToLin(0) = 1.0 → g = makeup 이라 결과가 비트까지 같음 (경계 근처는 원래 식)
+                    val g = if (envC <= cThrSafe) makeup
+                        else dbToLin(compGainDb(20 * log10(max(envC, 1e-9)), s.compThresholdDb, s.compRatio)) * makeup
                     for (c in 0 until ch) frame[c] = frame[c] * g
                     peak *= g
                 }

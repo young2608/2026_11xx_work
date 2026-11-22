@@ -9,6 +9,7 @@ from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter
 from PyQt6.QtWidgets import QWidget
 
 from ..lyrics.lrc import Lyrics
+from . import metrics
 from .skin import Skin
 from .qtutil import exec_menu
 
@@ -46,7 +47,7 @@ class LyricsView(QWidget):
         self.set_font_pt(font_pt)
         self._anim = QTimer(self, interval=16, timeout=self._animate)
         self._manual_t = QTimer(self, singleShot=True, interval=3000, timeout=self._end_manual)
-        self.setMinimumSize(240, 160)
+        metrics.fix(self, min_w=240, min_h=160)  # v033 (f61 H5): 글자 배율
 
     # ---- 외부 ----
     def set_skin(self, s):

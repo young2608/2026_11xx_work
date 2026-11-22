@@ -10,6 +10,7 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QScrollArea, QToolButton, QVBoxLayout, QWidget
 
 from ..domain import dsp
+from . import metrics
 from .iconbutton import IconButton
 from .neon import EqSliders, Knob, ResponseCurve
 from .section import Section
@@ -24,8 +25,8 @@ class SoundView(QScrollArea):
         self.setFrameShape(QScrollArea.Shape.NoFrame)
         inner = QWidget(objectName="scrollInner")
         v = QVBoxLayout(inner)
-        v.setContentsMargins(4, 4, 4, 4)
-        v.setSpacing(8)
+        metrics.margins(v, 4, 4, 4, 4)
+        metrics.spacing(v, 8)
         self._freqs = dsp.log_freqs(96)
         self._apply_timer = QTimer(self, singleShot=True, interval=120, timeout=self._apply)
 
@@ -35,13 +36,26 @@ class SoundView(QScrollArea):
             note.setWordWrap(True)
             note.setObjectName("noteLabel")
             v.addWidget(note)
+        v.addWidget(self._build_eq())
+        v.addWidget(self._build_tone())
+        v.addWidget(self._build_dyn())
+        v.addStretch(1)
+        self.setWidget(inner)
 
-        # ① EQ
+        self._loading = False
+        self.load(ctrl.sound)
+        ctrl.levels.connect(self._on_levels)
+        self._own = False
+        ctrl.soundChanged.connect(lambda: None if self._own else self.load(ctrl.sound))   # 다른 곳(EQ 대화상자)에서 바뀜
+
+    # ---- 블럭 만들기 (vr0.1.0.030 f58: 96줄 __init__ 를 블럭마다 나눔)
+    def _build_eq(self):
+        """① 이퀄라이저 — 프리셋 알약 · 응답 곡선 · 밴드 슬라이더 · 켜기 · 초기화"""
         eqb = QWidget()
         ev = QVBoxLayout(eqb)
         ev.setContentsMargins(0, 0, 0, 0)
         chips = QHBoxLayout()
-        chips.setSpacing(4)
+        metrics.spacing(chips, 4)
         self.preset_btns = {}
         for name in dsp.PRESETS:
             b = QToolButton(objectName="pill")
@@ -63,9 +77,10 @@ class SoundView(QScrollArea):
         self.sec_eq.add_action(self.eq_on)
         reset = IconButton("undo", "eq_reset", self.reset)
         self.sec_eq.add_action(reset)
-        v.addWidget(self.sec_eq)
+        return self.sec_eq
 
-        # ② 톤
+    def _build_tone(self):
+        """② 톤 · 밸런스 노브"""
         tb = QWidget()
         th = QHBoxLayout(tb)
         # 노브 색 = 테마 밴드 색 번호 (네온: 주황·하늘·보라 … 예전과 같은 색)
@@ -77,9 +92,10 @@ class SoundView(QScrollArea):
             th.addWidget(k)
         th.addStretch(1)
         self.sec_tone = Section("톤 · 밸런스", "sound.tone", self.cfg, tb)
-        v.addWidget(self.sec_tone)
+        return self.sec_tone
 
-        # ③ 다이내믹
+    def _build_dyn(self):
+        """③ 다이내믹 — 컴프레서 · 리미터 · 노브 5개"""
         db = QWidget()
         dv = QVBoxLayout(db)
         row = QHBoxLayout()
@@ -103,15 +119,7 @@ class SoundView(QScrollArea):
         kh.addStretch(1)
         dv.addLayout(kh)
         self.sec_dyn = Section("다이내믹 (컴프레서 · 리미터)", "sound.dyn", self.cfg, db)
-        v.addWidget(self.sec_dyn)
-        v.addStretch(1)
-        self.setWidget(inner)
-
-        self._loading = False
-        self.load(ctrl.sound)
-        ctrl.levels.connect(self._on_levels)
-        self._own = False
-        ctrl.soundChanged.connect(lambda: None if self._own else self.load(ctrl.sound))   # 다른 곳(EQ 대화상자)에서 바뀜
+        return self.sec_dyn
 
     @staticmethod
     def _bal_txt(x):

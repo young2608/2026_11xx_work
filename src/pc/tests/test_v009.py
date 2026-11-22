@@ -197,6 +197,7 @@ def test_simple_layout_window(app, tmp_path):
     w.go_page(w.libv)
     w.libv.set_view("grid")
     w.ctrl.scan_library()
+    w.ctrl._scan_jobs.waitForDone(5000)          # v032 (f60 P7): 스캔은 따로 작업 줄
     w.ctrl._jobs.waitForDone(5000)
     app.processEvents()
     assert cfg["lib_view"] == "grid" and w.libv.grid.count() >= 1

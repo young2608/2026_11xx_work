@@ -42,11 +42,15 @@ class LibraryMixin:
         folders = [f.strip() for f in str(self.cfg["library_folders"] or "").split(";") if f.strip()]
         lib = self.library
 
+        def stop():
+            return self._closed                  # v032 (f60 P7): 종료하면 곡 사이에서 멈춤 (전: 스캔이 끝날 때까지 돌다 DB 가 닫힌 뒤 쓰기)
+
         def work():
-            n = lib.scan(folders, read_tags)
-            gone = lib.remove_missing()
+            n = lib.scan(folders, read_tags, stop=stop)
+            gone = 0 if stop() else lib.remove_missing(stop=stop)
             return ("scan", (n, gone))
-        self._jobs.start(Job(work, self._jem))
+        pool = getattr(self, "_scan_jobs", None) or self._jobs
+        pool.start(Job(work, self._jem))
 
     def smart_list(self, rule: str) -> list[str]:
         """스마트 재생목록 (W7) — 키 목록 (파일이 있는 곡만은 재생할 때 확인)"""

@@ -3,8 +3,8 @@ package com.ascen.yamp.playback
 import android.media.audiofx.Visualizer
 import com.ascen.yamp.core.YLog
 import com.ascen.yamp.domain.VisMath
-import kotlin.math.hypot
 import kotlin.math.min
+import kotlin.math.sqrt
 
 /**
  * 스펙트럼(Visualizer). 서비스와 화면이 같은 프로세스 → 싱글턴으로 공유.
@@ -104,7 +104,11 @@ object Fx {
         val bins = fft.size / 2
         val m0 = if (buf != null && buf.size >= bins) buf else FloatArray(bins)
         if (bins > 0) m0[0] = 0f
-        for (k in 1 until bins) m0[k] = hypot(fft[2 * k].toFloat(), fft[2 * k + 1].toFloat())
+        for (k in 1 until bins) {                      // v032 (f60 A4): hypot(넘침 대비 · 느림) → sqrt (바이트 값 제곱합은 float 로 정확 → 같은 값)
+            val re = fft[2 * k].toFloat()
+            val im = fft[2 * k + 1].toFloat()
+            m0[k] = sqrt(re * re + im * im)
+        }
         val out = FloatArray(n)
         if (bins < 2 || sr <= 0) return out
         VisMath.bandsFromMags(m0, bins, sr / 2.0 / bins, out, RANGE_DB, REF)

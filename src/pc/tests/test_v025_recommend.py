@@ -24,7 +24,7 @@ def test_step_theme_ladder():
 def test_next_font_pt():
     from yamp.ui.skin import next_font_pt
     assert next_font_pt(10, 1) == 11 and next_font_pt(10, -1) == 9
-    assert next_font_pt(14, 1) == 14 and next_font_pt(9, -1) == 9
+    assert next_font_pt(14, 1) == 15 and next_font_pt(16, 1) == 16 and next_font_pt(9, -1) == 9   # v033: 16pt 까지
     assert next_font_pt(12.4, 1) == 13 and next_font_pt(8, 1) == 9
 
 

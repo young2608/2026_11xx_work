@@ -7,7 +7,7 @@ import os
 from collections import Counter
 from pathlib import Path
 
-from .track import AUDIO_EXT, CUE_EXT, Track, is_audio
+from .track import AUDIO_EXT, CUE_EXT, Track, is_audio, path_name, path_stem
 
 
 def scan_dir(root: str, recursive: bool = True) -> list[str]:
@@ -76,7 +76,7 @@ def scan_tracks(root: str, recursive: bool = True, counts=None) -> list[Track]:
 def sort_tracks(tracks: list[Track], how: str = "name") -> list[Track]:
     """폴더 재생 정렬: name(파일명·CUE 순서) / title / added(파일 수정 시각 최근 순)"""
     if how == "title":
-        return sorted(tracks, key=lambda t: ((t.title or Path(t.path).stem).lower(), t.cue_no))
+        return sorted(tracks, key=lambda t: ((t.title or path_stem(t.path)).lower(), t.cue_no))     # v032 (f60 P5)
     if how == "added":
         def mt(t):
             try:
@@ -84,7 +84,7 @@ def sort_tracks(tracks: list[Track], how: str = "name") -> list[Track]:
             except OSError:
                 return 0
         return sorted(tracks, key=lambda t: (mt(t), t.path.lower(), t.cue_no))
-    return sorted(tracks, key=lambda t: (os.path.dirname(t.path).lower(), Path(t.path).name.lower(), t.cue_no))
+    return sorted(tracks, key=lambda t: (os.path.dirname(t.path).lower(), path_name(t.path).lower(), t.cue_no))   # v032 (f60 P5)
 
 
 def folder_summary(path: str, recursive: bool = False, limit: int = 5000) -> tuple[int, Counter]:

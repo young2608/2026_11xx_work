@@ -54,6 +54,7 @@ import com.ascen.yamp.data.fmtTime
 import com.ascen.yamp.domain.BandSmoother
 import com.ascen.yamp.domain.VisMath
 import com.ascen.yamp.playback.Fx
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlin.math.max
 
@@ -65,6 +66,9 @@ import kotlin.math.max
 
 /** 이보다 작은 레벨은 0 으로 봄 (일시정지 중 프레임 루프 멈춤) */
 private const val LEVEL_EPS = 0.01f
+
+/** v032 (f60 A3): 스펙트럼 프레임 뒤 쉬는 시간 — 60 Hz 화면 = 그대로 60fps · 90 Hz ≈ 45fps · 120 Hz = 60fps */
+private const val SPECTRUM_GAP_MS = 12L
 
 /** 위치 글자 (경과 시간) — 이 Text 만 다시 구성됨 */
 @Composable
@@ -125,6 +129,9 @@ fun NeonSpectrum(levels: FloatArray, on: Boolean, modifier: Modifier = Modifier,
                 last = tm
                 frame = tm
             }
+            // v032 (f60 A3): 90 · 120 Hz 화면에서 화면 주사율 그대로(초당 90~120번) 다시 그리던 것 → 약 60fps 상한
+            //   (값은 20Hz 로 오고 움직임은 지난 시간(dt) 기준이라 모양 · 속도는 같음. 60 Hz 화면은 그대로 60fps)
+            delay(SPECTRUM_GAP_MS)
         }
     }
     // 위(peak) → spectrum_hi → 아래(spectrum_lo) — 써니 = 진주황 · 노랑 · 주황, 네온 = 분홍 · 노랑 · 초록

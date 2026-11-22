@@ -80,11 +80,21 @@ class TipStyle(QProxyStyle):
         super().__init__(base)
         self.delay_ms = delay_ms
 
+    # v033 (f61 H3): 스타일 기본 크기(px)도 글자 배율을 따라감 — 큰 글자(13~16pt)에서 메뉴 아이콘 · 체크 표시 · 슬라이더 두께가
+    #   10pt 크기 그대로 작게 남거나(볼륨 손잡이 위아래 잘림) 하던 것. 10pt(배율 1.0) = 스타일 값 그대로
+    SCALED = (QStyle.PixelMetric.PM_SmallIconSize, QStyle.PixelMetric.PM_IndicatorWidth, QStyle.PixelMetric.PM_IndicatorHeight,
+              QStyle.PixelMetric.PM_ExclusiveIndicatorWidth, QStyle.PixelMetric.PM_ExclusiveIndicatorHeight,
+              QStyle.PixelMetric.PM_SliderThickness, QStyle.PixelMetric.PM_SliderLength,
+              QStyle.PixelMetric.PM_SliderControlThickness, QStyle.PixelMetric.PM_MenuButtonIndicator)
+
     def pixelMetric(self, metric, option=None, widget=None):
         """v025: 입력칸 안 아이콘(돋보기 · 지우기 ×) = 18px × 글자 배율 (기본 16px 은 얇고 작게 보였음)"""
         if metric == QStyle.PixelMetric.PM_LineEditIconSize:
             return metrics.dp(18)
-        return super().pixelMetric(metric, option, widget)
+        v = super().pixelMetric(metric, option, widget)
+        if metric in self.SCALED:
+            return scaled_metric(v, metrics.k())
+        return v
 
     def styleHint(self, hint, option=None, widget=None, returnData=None):
         if hint == QStyle.StyleHint.SH_ToolTip_WakeUpDelay:
@@ -92,6 +102,11 @@ class TipStyle(QProxyStyle):
         if hint == QStyle.StyleHint.SH_ToolTip_FallAsleepDelay:
             return 2000
         return super().styleHint(hint, option, widget, returnData)
+
+
+def scaled_metric(v: int, k: float) -> int:
+    """스타일 px × 글자 배율 (배율 1 이하 = 그대로 — 10pt 화면은 전과 픽셀까지 같음)"""
+    return int(v) if k <= 1.0 + 1e-6 or v <= 0 else int(round(v * k))
 
 
 def install_tip_style(app, delay_ms: int = TOOLTIP_DELAY_MS):

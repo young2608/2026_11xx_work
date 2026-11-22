@@ -74,10 +74,11 @@ def test_app_icon_and_sources():
     from PIL import Image
     im = Image.open(IOS / "App/Assets.xcassets/AppIcon.appiconset/AppIcon.png")
     assert im.size == (1024, 1024) and im.mode == "RGB"           # 투명 없음 (App Store 규칙)
-    for f in ("YampApp.swift", "PlayerEngine.swift", "Library.swift", "ContentView.swift", "NowPlayingView.swift",
-              "VisualizerView.swift", "Theme.swift", "BuildInfo.swift"):
-        assert (IOS / "App" / f).is_file(), f
-    eng = (IOS / "App/PlayerEngine.swift").read_text(encoding="utf-8")
+    for f in ("YampApp.swift", "Player/PlayerEngine.swift", "Library/Library.swift", "ContentView.swift",
+              "Player/NowPlayingView.swift", "Visualizer/VisualizerView.swift", "Theme/Theme.swift", "BuildInfo.swift"):
+        assert (IOS / "App" / f).is_file(), f                    # v030: 기능별 폴더 (Player · Library · Visualizer · Settings · Theme)
+    eng = "".join((IOS / "App/Player" / f).read_text(encoding="utf-8")
+                  for f in ("PlayerEngine.swift", "SpectrumTap.swift", "PlayerEngine+System.swift"))
     assert "VisMath.bandsFromMags" in eng and "MPRemoteCommandCenter" in eng and ".playback" in eng
 
 

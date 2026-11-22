@@ -98,6 +98,10 @@ class Controller(PlaybackMixin, LyricsMixin, QueueMixin, EffectsMixin, LibraryMi
         self._jem = JobEmitter()
         self._jobs = QThreadPool(self)
         self._jobs.setMaxThreadCount(1)
+        # v032 (f60 P7): 라이브러리 폴더 스캔은 따로 (첫 스캔 = 새 곡마다 태그 읽기 → 수천 곡이면 수 분.
+        #   전에는 같은 작업 줄(_jobs)이라 그동안 추천 홈 · 하루 정리 · 스마트 목록 작업이 스캔이 끝날 때까지 기다렸음)
+        self._scan_jobs = QThreadPool(self)
+        self._scan_jobs.setMaxThreadCount(1)
         self._home_cb = None
         self._jem.done.connect(self._on_job_done)
         self.spectrum.levels.connect(self.levels)
@@ -156,6 +160,7 @@ class Controller(PlaybackMixin, LyricsMixin, QueueMixin, EffectsMixin, LibraryMi
         self.engine.stop()
         self._pool.waitForDone(2000)
         self._jobs.waitForDone(2000)
+        self._scan_jobs.waitForDone(3000)         # v032 (f60 P7): 스캔은 _closed 를 보고 곡 사이에서 멈춤 → DB 닫기 전에 끝남
         self.lyrics.wait(1000)
         try:
             self.engine.shutdown()

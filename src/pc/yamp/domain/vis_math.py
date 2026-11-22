@@ -2,6 +2,7 @@
 """소리 시각화 계산 (vr0.1.0.019 R10 — ui/vis_block.py · audio/visualizer.py 에서 모음, Qt 비의존 · 테스트 대상)
 Android domain/VisMath.kt 와 같은 역할: dB 변환(바닥 -60 dB) · 차트 높이 · 파일 파형 구간 · 파동 자동 키움(AGC)
 (전에는 to_db 가 vis_block.py 와 visualizer.py 에 두 벌 있었음)"""
+import functools
 import math
 
 
@@ -77,28 +78,43 @@ def band_freqs(n: int = VIS_BANDS, lo: float = VIS_F_LO, hi: float = VIS_F_HI) -
     return out
 
 
+@functools.lru_cache(maxsize=32)
+def _band_plan(m: int, bin_hz: float, n: int) -> tuple:
+    """v032 (f60 P3): 밴드별 계산 방법을 (FFT 크기 · bin 간격 · 밴드 수) 마다 한 번만 정함 — 전에는 프레임마다
+    band_freqs(거듭제곱 48번 · 제곱근 24번) 와 보간 위치 · bin 범위를 다시 계산. 값 · 계산 순서는 그대로 (결과 비트까지 같음)
+    반환: 밴드마다 (0, k, k+1, fr, tilt) = 좁은 밴드 보간 / (1, k0, k1, 0, tilt) = 넓은 밴드 RMS"""
+    out = []
+    for f0, f1, fc in band_freqs(n):
+        tilt = VIS_TILT_DB_OCT * math.log2(fc / 1000.0)
+        if f1 - f0 < 2 * bin_hz:
+            x = min(m - 1.0, max(1.0, fc / bin_hz))
+            k = int(x)
+            out.append((0, k, min(m - 1, k + 1), x - k, tilt))
+        else:
+            k0 = max(1, int(f0 / bin_hz))
+            k1 = min(m, max(k0 + 1, int(f1 / bin_hz)))
+            out.append((1, k0, k1, 0.0, tilt))
+    return tuple(out)
+
+
 def bands_from_mags(mags, bin_hz: float, n: int = VIS_BANDS, range_db: float = 60.0, ref: float = 1.0) -> list[float]:
-    """FFT 크기 배열(mags[k] = k × bin_hz Hz) → n 밴드 0..1. 순수 계산 (PC numpy 배열 · 리스트 모두)"""
+    """FFT 크기 배열(mags[k] = k × bin_hz Hz) → n 밴드 0..1. 순수 계산 (PC numpy 배열 · 리스트 모두)
+    좁은 밴드(bin 2개 폭 미만) = 가운데 주파수 보간 · 넓은 밴드 = bin 들의 RMS · +3 dB/옥타브 (Android VisMath.bandsFromMags 와 같음)"""
     m = len(mags)
     out = []
     if m < 2 or bin_hz <= 0:
         return [0.0] * n
-    for f0, f1, fc in band_freqs(n):
-        if f1 - f0 < 2 * bin_hz:                       # 좁은 밴드: 가운데 주파수 보간
-            x = min(m - 1.0, max(1.0, fc / bin_hz))
-            k = int(x)
-            fr = x - k
-            a = float(mags[k])
-            b = float(mags[min(m - 1, k + 1)])
+    for wide, k0, k1, fr, tilt in _band_plan(m, float(bin_hz), int(n)):
+        if not wide:                                   # 좁은 밴드: 가운데 주파수 보간
+            a = float(mags[k0])
+            b = float(mags[k1])
             v = a + (b - a) * fr
         else:                                          # 넓은 밴드: RMS
-            k0 = max(1, int(f0 / bin_hz))
-            k1 = min(m, max(k0 + 1, int(f1 / bin_hz)))
             s = 0.0
             for k in range(k0, k1):
                 s += float(mags[k]) ** 2
             v = math.sqrt(s / (k1 - k0)) if k1 > k0 else 0.0         # 나이퀴스트 넘는 밴드 = 0
-        db = 20.0 * math.log10(max(v, 1e-9) / ref) + VIS_TILT_DB_OCT * math.log2(fc / 1000.0)
+        db = 20.0 * math.log10(max(v, 1e-9) / ref) + tilt
         out.append(min(1.0, max(0.0, (db + range_db) / range_db)))
     return out
 

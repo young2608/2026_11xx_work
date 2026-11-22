@@ -33,7 +33,7 @@ VER_TYPE = "r"
 VER_MAJOR = 0
 VER_MINOR = 1
 VER_PATCH = 0
-VER_BUILD = 29
+VER_BUILD = 33
 VER_UPGRADE = ""
 
 VER_TYPES = {"r": "release", "d": "debug", "p": "patch", "t": "test"}

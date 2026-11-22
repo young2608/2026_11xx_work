@@ -1,7 +1,7 @@
 """메인 창 — vr0.1.0.009 단순 배치 (아이콘 버튼 + 마우스를 올리면 설명 팝업)
 
 모듈: mainwindow = 시그널 연결 · 이벤트 · 창 상태 / win_layout = 화면 구성(단순) · win_classic = 클래식 배치
-      win_menus = 메뉴 · 단축키 / win_actions = 사용자 동작 / win_tray = 트레이 · 종료
+      win_menus = 메뉴 · 단축키 / win_menubar = 제목 줄 · 메뉴 막대 접기 · Alt / win_actions = 사용자 동작 / win_tray = 트레이 · 종료
       win_native = Windows 연동 (작업 표시줄 · 전역 단축키 · 미디어 제어 · 강조색)
 
 ┌ 메뉴바 ─────────────────────────────────────── vr0.1.0.009__빌드시각 ┐
@@ -25,6 +25,7 @@ from ..audio.waveform import WaveformLoader
 from .controller import Controller
 from .mediakeys import WinMediaKeys
 from .win_menus import MenuMixin
+from .win_menubar import MenuBarMixin
 from .win_actions import ActionsMixin
 from .win_tray import TrayMixin
 from .win_layout import LayoutMixin
@@ -34,7 +35,7 @@ from .win_native import NativeMixin
 ALARM_CHECK_MS = 30_000
 
 
-class MainWindow(MenuMixin, ActionsMixin, TrayMixin, NowMixin, LayoutMixin, NativeMixin, QMainWindow):
+class MainWindow(MenuMixin, MenuBarMixin, ActionsMixin, TrayMixin, NowMixin, LayoutMixin, NativeMixin, QMainWindow):
     def __init__(self, cfg, ctrl: Controller | None = None):
         super().__init__()
         self.cfg = cfg
@@ -53,11 +54,15 @@ class MainWindow(MenuMixin, ActionsMixin, TrayMixin, NowMixin, LayoutMixin, Nati
         self.mini_player = None
         install_tip_style(QApplication.instance(), int(cfg["tooltip_delay_ms"]))
         self.setWindowTitle(title_label())
+        from ..ui.app_icon import app_icon                       # v033 (f61 H7): 앱 아이콘 (제목 줄 · 작업 표시줄 · 트레이, 배율마다 벡터)
+        QApplication.instance().setWindowIcon(app_icon())
+        self.setWindowIcon(app_icon())
         skinmod.apply_app_font(QApplication.instance(), self.effective_font_pt(), str(self.cfg["font_hinting"]))   # v016 G2 · G9
         self._first_size()
         self.setAcceptDrops(True)
         self._build_ui()
         self._build_menu()
+        skinmod.sync_menubar_font(self)                          # v033 (f61 H2): 메뉴 막대도 글자 크기를 따라감
         self._wire_menu()
         self._build_shortcuts()
         self._page_shortcuts()

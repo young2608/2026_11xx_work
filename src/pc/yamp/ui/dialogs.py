@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QF
 
 from ..audio.mpv_engine import EQ_FREQS, EQ_PRESETS, parse_eq_bands
 # v019 (R8): 가사 대화상자는 lyrics_dialogs.py 로 나눔 — dialogs.LyricsEditorDialog 처럼 이전 이름 그대로 쓰게 다시 내보냄
+from . import metrics
 from .lyrics_dialogs import LyricsEditorDialog, LyricsPickDialog  # noqa: F401
 
 
@@ -84,7 +85,7 @@ class EqDialog(QDialog):
             s = QSlider(Qt.Orientation.Vertical)
             s.setRange(-12, 12)
             s.setValue(int(round(bands[i])))
-            s.setMinimumHeight(140)
+            metrics.fix(s, min_h=140)  # v033 (f61 H5): 글자 배율
             lv = QLabel()
             lv.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lf = QLabel(f"{fq // 1000}k" if fq >= 1000 else str(fq))

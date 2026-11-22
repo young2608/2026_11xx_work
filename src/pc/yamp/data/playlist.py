@@ -55,10 +55,11 @@ class Playlist:
         return len(self.items) - n0
 
     def remove(self, indices):
+        """v032 (f60 P6): 한 번에 새 목록으로 (전: 뒤에서부터 한 곡씩 del — 2만 곡 중 5천 곡 빼기 = 목록 복사 5천 번)"""
         cur_track = self.items[self.current] if 0 <= self.current < len(self.items) else None
-        for i in sorted(set(indices), reverse=True):
-            if 0 <= i < len(self.items):
-                del self.items[i]
+        drop = {i for i in indices if 0 <= i < len(self.items)}
+        if drop:
+            self.items[:] = [t for k, t in enumerate(self.items) if k not in drop]
         self.current = self._index_of(cur_track)
         self._order = []
 
@@ -79,10 +80,7 @@ class Playlist:
     def _index_of(self, t):
         if t is None:
             return -1
-        for k, x in enumerate(self.items):
-            if x is t:
-                return k
-        return -1
+        return next((k for k, x in enumerate(self.items) if x is t), -1)
 
     # ---- 다음/이전 ----
     def _ensure_order(self):

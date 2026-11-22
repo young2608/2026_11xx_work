@@ -11,7 +11,7 @@
 import math
 
 from PyQt6.QtCore import QPointF, QRectF, Qt
-from PyQt6.QtGui import QColor, QImage, QLinearGradient, QPainterPath, QPen
+from PyQt6.QtGui import QBrush, QColor, QImage, QLinearGradient, QPainterPath, QPen
 
 from ..domain.vis_math import LED_CELL, heat_rgb, led_cells, mirror_order
 from . import metrics
@@ -61,18 +61,27 @@ def draw_bars(p, r, s, v, pk, style="round"):
         cell = max(3.0, LED_CELL * metrics.k())
         total = max(1, int((hmax + 2) // (cell + 2)))
         dim = QColor(s.graph_grid)
+        # v032 (f60 P2): 칸마다 fillRect(24막대 × 30칸 ≈ 740번/프레임 — 파이썬 호출이 프레임 시간의 대부분) →
+        #   색 묶음(꺼진 칸 · 켜진 칸 · 꼭대기)별로 사각형 목록을 모아 drawRects 3번. 칸끼리 2px 떨어져 겹치는 픽셀이 없고
+        #   drawRects(펜 없음) 는 fillRect 와 같은 래스터 경로 → 픽셀까지 같은 그림 (test_v032_perf 가 비교)
+        lit, top, off = [], [], []
+        bottom = r.bottom()
+        ys = [bottom - (c + 1) * (cell + 2) + 2 for c in range(total)]
         for i in range(n):
             x = r.left() + i * slot + gap / 2
             on = led_cells(v[i], hmax, cell)
             top_on = led_cells(max(v[i], pk[i]), hmax, cell)
-            for c in range(total):
-                y = r.bottom() - (c + 1) * (cell + 2) + 2
-                if c < on:
-                    p.fillRect(QRectF(x, y, w, cell), g)
-                elif c == top_on - 1 and top_on > on:
-                    p.fillRect(QRectF(x, y, w, cell), peak)
-                else:
-                    p.fillRect(QRectF(x, y, w, cell), dim)
+            lit.extend(QRectF(x, ys[c], w, cell) for c in range(on))
+            if top_on > on:
+                top.append(QRectF(x, ys[top_on - 1], w, cell))
+            off.extend(QRectF(x, ys[c], w, cell) for c in range(on, total) if not (c == top_on - 1 and top_on > on))
+        p.save()
+        p.setPen(Qt.PenStyle.NoPen)
+        for rects, brush in ((off, dim), (lit, g), (top, peak)):
+            if rects:
+                p.setBrush(QBrush(brush))
+                p.drawRects(rects)
+        p.restore()
         return
     rad = min(3.0, w / 2)
     for i in range(n):                                        # round · mirror

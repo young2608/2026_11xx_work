@@ -46,13 +46,15 @@ layout           = simple
 tooltip_delay_ms = 500
 # Windows 다크/라이트 · 강조색 따라가기 (1 = 강조색을 Windows 색으로)
 follow_system_accent = 0
-# 글자 (vr0.1.0.016) — 크기(pt, 9~14: 보기 → 글자 크기) · 힌팅 · Windows 글꼴 엔진
+# 글자 (vr0.1.0.016) — 크기(pt, 9~16: 보기 → 글자 크기) · 힌팅 · Windows 글꼴 엔진
 #   font_hinting: auto (100 % = full 가장 또렷, 125·150 % = vertical, 200 % 이상 = none) / full / vertical / none
 #   font_engine : auto (Qt 기본 = DirectWrite) / directwrite / gdi / freetype  — 글자가 흐릴 때 바꿔 비교 (다시 시작하면 적용)
 font_size        = 10
 # 글자 크기 자동 (vr0.1.0.023): 1 = 화면 크기에 맞춤 (1080p = 10pt · 1440p = 11 · 4K(100 %) = 13, 버튼·막대도 함께 커짐)
 #   0 = 위 font_size 그대로 — 보기 → 글자 크기에서 고르면 0 이 됨
 font_auto        = 1
+# 글자 크기 자동에 화면 실제 밀도도 반영 (vr0.1.0.033): 1 = 4K 를 100 % 로 쓰는 것처럼 촘촘한 화면이면 더 크게 (최대 16pt) · 0 = 화면 높이만
+font_auto_dpi    = 1
 font_hinting     = auto
 font_engine      = auto
 # 화면 배율 맞춤 (vr0.1.0.017): passthrough (기본, 125·150 % 그대로) / round (가까운 정수 배율: 150 % → 200 %) /

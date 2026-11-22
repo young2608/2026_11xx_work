@@ -1,8 +1,8 @@
 // 재생 엔진 (vr0.1.0.028, f55) — AVAudioEngine + AVAudioPlayerNode
+//   vr0.1.0.030 (f58): 스펙트럼 계산 → SpectrumTap.swift · 오디오 세션 · 잠금화면 → PlayerEngine+System.swift
 //   · 스펙트럼: 메인 믹서 탭 → 끝 1024 표본 · Hann 창 · DFT(Accelerate) → YampCore.VisMath.bandsFromMags (PC 와 같은 규칙, 마이크 권한 필요 없음)
 //   · 레벨: RMS · 피크 (레벨 모드)
 //   · 백그라운드 재생 (Info.plist UIBackgroundModes audio) · 잠금화면 / 제어 센터 (MPNowPlayingInfoCenter · MPRemoteCommandCenter)
-import Accelerate
 import AVFoundation
 import MediaPlayer
 import UIKit
@@ -25,20 +25,20 @@ final class PlayerEngine: ObservableObject {
     private var startFrame: AVAudioFramePosition = 0
     private var pausedPos: Double = 0
     private var gen = 0
-    private let fftN = 1024
-    private let dft: vDSP.DFT<Float>?
-    private let window: [Float]
-    private var lastLevelT: CFTimeInterval = 0
+    private let spectrum = SpectrumTap()                 // 스펙트럼 · 레벨 계산 (Player/SpectrumTap.swift)
 
     var current: Track? { queue.indices.contains(index) ? queue[index] : nil }
 
     init() {
-        window = vDSP.window(ofType: Float.self, usingSequence: .hanningDenormalized, count: 1024, isHalfWindow: false)
-        dft = vDSP.DFT(count: 1024, direction: .forward, transformType: .complexComplex, ofType: Float.self)
         engine.attach(node)
         engine.connect(node, to: engine.mainMixerNode, format: nil)
         engine.mainMixerNode.installTap(onBus: 0, bufferSize: 1024, format: nil) { [weak self] buf, _ in
-            self?.analyze(buf)
+            guard let self = self, let r = self.spectrum.analyze(buf) else { return }
+            DispatchQueue.main.async { [weak self] in
+                self?.levels = r.levels
+                self?.rms = r.rms
+                self?.peak = r.peak
+            }
         }
         setupSession()
         setupRemote()
@@ -147,86 +147,5 @@ final class PlayerEngine: ObservableObject {
     private func segmentDone(_ g: Int) {
         guard g == gen, isPlaying else { return }
         next(auto: true)
-    }
-
-    // MARK: - 스펙트럼 · 레벨 (오디오 스레드)
-    private func analyze(_ buf: AVAudioPCMBuffer) {
-        guard let ch = buf.floatChannelData, let dft = dft else { return }
-        let n = Int(buf.frameLength)
-        guard n >= 64 else { return }
-        let now = CACurrentMediaTime()
-        if now - lastLevelT < 1.0 / 30 { return }          // 초당 30번까지
-        lastLevelT = now
-        let chans = max(1, Int(buf.format.channelCount))
-        let take = min(n, fftN)
-        let off = n - take
-        var x = [Float](repeating: 0, count: fftN)
-        var sq: Float = 0, pk: Float = 0
-        for i in 0..<take {
-            var s: Float = 0
-            for c in 0..<chans { s += ch[c][off + i] }
-            s /= Float(chans)
-            x[fftN - take + i] = s
-            sq += s * s
-            pk = max(pk, abs(s))
-        }
-        let r = (sq / Float(take)).squareRoot()
-        x = vDSP.multiply(x, window)
-        let zeros = [Float](repeating: 0, count: fftN)
-        var re = [Float](repeating: 0, count: fftN)
-        var im = [Float](repeating: 0, count: fftN)
-        dft.transform(inputReal: x, inputImaginary: zeros, outputReal: &re, outputImaginary: &im)
-        let half = fftN / 2
-        let scale = Float(fftN) / 4                          // 꽉 찬 사인 ≈ 1.0 (PC compute_bands 와 같은 기준)
-        var mags = [Float](repeating: 0, count: half)
-        for k in 0..<half { mags[k] = (re[k] * re[k] + im[k] * im[k]).squareRoot() / scale }
-        let lv = VisMath.bandsFromMags(mags, binHz: buf.format.sampleRate / Double(fftN))
-        DispatchQueue.main.async { [weak self] in
-            self?.levels = lv
-            self?.rms = min(1, r)
-            self?.peak = min(1, pk)
-        }
-    }
-
-    // MARK: - 오디오 세션 · 잠금화면
-    private func setupSession() {
-        let s = AVAudioSession.sharedInstance()
-        try? s.setCategory(.playback, mode: .default)
-        try? s.setActive(true)
-        NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: s, queue: .main) { [weak self] n in
-            guard let raw = n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-                  let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
-            if type == .began { self?.pause() }
-        }
-    }
-
-    private func setupRemote() {
-        let cc = MPRemoteCommandCenter.shared()
-        cc.playCommand.addTarget { [weak self] _ in self?.resume(); return .success }
-        cc.pauseCommand.addTarget { [weak self] _ in self?.pause(); return .success }
-        cc.togglePlayPauseCommand.addTarget { [weak self] _ in self?.toggle(); return .success }
-        cc.nextTrackCommand.addTarget { [weak self] _ in self?.next(); return .success }
-        cc.previousTrackCommand.addTarget { [weak self] _ in self?.prev(); return .success }
-        cc.changePlaybackPositionCommand.addTarget { [weak self] e in
-            guard let e = e as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
-            self?.seek(to: e.positionTime)
-            return .success
-        }
-    }
-
-    private func updateNowPlaying() {
-        guard let t = current else { MPNowPlayingInfoCenter.default().nowPlayingInfo = nil; return }
-        var info: [String: Any] = [
-            MPMediaItemPropertyTitle: t.title,
-            MPMediaItemPropertyArtist: t.artist,
-            MPMediaItemPropertyAlbumTitle: t.album,
-            MPMediaItemPropertyPlaybackDuration: durationS,
-            MPNowPlayingInfoPropertyElapsedPlaybackTime: position(),
-            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0,
-        ]
-        if let d = t.artwork, let img = UIImage(data: d) {
-            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: img.size) { _ in img }
-        }
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 }

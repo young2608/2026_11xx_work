@@ -85,8 +85,8 @@ def test_no_hardcoded_colors_in_source():
                 bad.append(f"{rel}:{i}: {ln.strip()}")
     assert not bad, "\n".join(bad)
     import inspect
-    from yamp.ui import skin
-    src = inspect.getsource(skin.stylesheet)
+    from yamp.ui import skin, skin_css
+    src = inspect.getsource(skin_css)                   # v030: 스타일시트는 skin_css.py (묶음 7개)
     assert "s.name" not in src and not pat.search(src)
     for name, s in skin.SKINS.items():                  # 스타일시트의 색은 모두 그 테마 토큰
         used = set(pat.findall(skin.stylesheet(s)))

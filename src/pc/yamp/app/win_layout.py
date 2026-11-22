@@ -109,7 +109,6 @@ class LayoutMixin(ClassicMixin):
 
     # ================================================= 단순 배치 (기본)
     def _arrange_simple(self, root):
-        c = self.ctrl
         outer = QVBoxLayout(root)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
@@ -117,8 +116,21 @@ class LayoutMixin(ClassicMixin):
         mid.setContentsMargins(0, 0, 0, 0)
         mid.setSpacing(0)
         outer.addLayout(mid, 1)
+        self._build_pages()
+        mid.addWidget(self._build_rail())
+        mid.addWidget(self.pages, 1)
+        mid.addWidget(self._build_side(), 1)
+        outer.addWidget(self._player_bar())                   # ---- 아래 재생 막대
+        self._hide_classic_only()
+        start = {"now": self.page_now, "list": self.page_list, "lib": self.page_lib, "folder": self.page_folder,
+                 "home": self.page_home, "sound": self.page_sound}.get(str(self.cfg["last_page"]), self.page_now)
+        self.go_page(start)
+        panel = str(self.cfg["side_panel"])
+        self.toggle_panel(panel if panel in ("lyrics", "queue") else None, force=True)
 
-        # ---- 페이지
+    def _build_pages(self):
+        """가운데 화면 6개 (지금 재생 · 목록 · 라이브러리 · 폴더 · 추천 · 사운드)"""
+        c = self.ctrl
         self.pages = QStackedWidget()
         self.page_now = CenterBox(self._page_now(), NOW_MAX_W)       # v023: 아주 넓은 창에서 카드 폭 제한 · 가운데
         self.page_list = self._page(tips.name("nav_list"), self.listv,
@@ -131,12 +143,13 @@ class LayoutMixin(ClassicMixin):
         for p in (self.page_now, self.page_list, self.page_lib, self.page_folder, self.page_home, self.page_sound):
             self.pages.addWidget(p)
 
-        # ---- 왼쪽 레일
+    def _build_rail(self):
+        """왼쪽 아이콘 레일 — ☰ 메뉴 막대 · [재생] [찾기] [소리] 묶음 · 도움말 · 설정"""
         rail = QFrame(objectName="rail")
         metrics.fix(rail, width=56)
         rv = QVBoxLayout(rail)
-        rv.setContentsMargins(8, 10, 8, 10)
-        rv.setSpacing(6)
+        metrics.margins(rv, 8, 10, 8, 10)
+        metrics.spacing(rv, 6)
         self.rail_group = QButtonGroup(self)
         self.rail_group.setExclusive(True)
         self.rail_btns = {}
@@ -169,14 +182,14 @@ class LayoutMixin(ClassicMixin):
         self.b_settings = b_set
         rv.addWidget(self.b_help, 0, Qt.AlignmentFlag.AlignHCenter)
         rv.addWidget(b_set, 0, Qt.AlignmentFlag.AlignHCenter)
-        mid.addWidget(rail)
-        mid.addWidget(self.pages, 1)
+        return rail
 
-        # ---- 오른쪽 패널 (가사 / 대기열)
+    def _build_side(self):
+        """오른쪽 패널 (가사 / 대기열) + 화면과 나누는 막대 → 나눔 막대(QSplitter) 반환"""
         self.side = QFrame(objectName="sidePanel")
         metrics.fix(self.side, min_w=260, max_w=720)           # v023: 큰 화면에서 가사 패널이 너무 넓어지지 않게
         sv = QVBoxLayout(self.side)
-        sv.setContentsMargins(8, 6, 8, 8)
+        metrics.margins(sv, 8, 6, 8, 8)
         head = QHBoxLayout()
         self.b_tab_lyrics = IconButton("lyrics", "panel_lyrics", checkable=True)
         self.b_tab_queue = IconButton("queue", "panel_queue", checkable=True)
@@ -200,29 +213,21 @@ class LayoutMixin(ClassicMixin):
         self.split.setStretchFactor(0, 3)
         self.split.setStretchFactor(1, 2)
         self.split.setChildrenCollapsible(False)
-        mid.addWidget(self.split, 1)
+        return self.split
 
-        # ---- 아래 재생 막대
-        outer.addWidget(self._player_bar())
-
-        # 클래식 전용 위젯 (숨김: 두 배치 공통 코드가 참조)
+    def _hide_classic_only(self):
+        """클래식 전용 위젯 (숨김: 두 배치 공통 코드가 참조)"""
         self.tabs = None
         self.sec_now = self.sec_lists = self.sec_lyrics = None
         for w in (self.b_pause, self.b_stop, self.b_open, self.b_mini):
             w.setParent(self)
             w.hide()
 
-        start = {"now": self.page_now, "list": self.page_list, "lib": self.page_lib, "folder": self.page_folder,
-                 "home": self.page_home, "sound": self.page_sound}.get(str(self.cfg["last_page"]), self.page_now)
-        self.go_page(start)
-        panel = str(self.cfg["side_panel"])
-        self.toggle_panel(panel if panel in ("lyrics", "queue") else None, force=True)
-
     def _page(self, title, body, tools):
         w = QWidget()
         v = QVBoxLayout(w)
-        v.setContentsMargins(14, 10, 14, 8)
-        v.setSpacing(8)
+        metrics.margins(v, 14, 10, 14, 8)
+        metrics.spacing(v, 8)
         h = QHBoxLayout()
         t = QLabel(title, objectName="pageTitle")
         h.addWidget(t)
@@ -239,8 +244,8 @@ class LayoutMixin(ClassicMixin):
         bar = QFrame(objectName="playerBar")
         metrics.fix(bar, height=84)
         h = QHBoxLayout(bar)
-        h.setContentsMargins(12, 6, 12, 6)
-        h.setSpacing(10)
+        metrics.margins(h, 12, 6, 12, 6)
+        metrics.spacing(h, 10)
         # 왼쪽: 표지 · 제목 · 가수/형식 · 좋아요
         left = QHBoxLayout()
         self.bar_cover = QLabel()
@@ -253,7 +258,7 @@ class LayoutMixin(ClassicMixin):
         self.bar_sub = ElideLabel("", objectName="barSub")
         for lb in (self.bar_title, self.bar_sub):
             metrics.fix(lb, max_w=220)
-            lb.setMinimumWidth(40)
+            metrics.fix(lb, min_w=40)
         tv.addStretch(1)
         tv.addWidget(self.bar_title)
         tv.addWidget(self.bar_sub)
@@ -266,7 +271,7 @@ class LayoutMixin(ClassicMixin):
         h.addWidget(lw)
         # 가운데: 조작 + 파형
         mid = QVBoxLayout()
-        mid.setSpacing(2)
+        metrics.spacing(mid, 2)
         row = QHBoxLayout()
         row.addStretch(1)
         self.b_play.setObjectName("playBig")
@@ -288,7 +293,7 @@ class LayoutMixin(ClassicMixin):
         self.b_panel_lyrics = IconButton("lyrics", "panel_lyrics", lambda: self.toggle_panel("lyrics"), checkable=True)
         self.b_panel_queue = IconButton("queue", "panel_queue", lambda: self.toggle_panel("queue"), checkable=True)
         right = QHBoxLayout()
-        right.setSpacing(2)
+        metrics.spacing(right, 2)
         def bsep():                                          # v014: 그룹 구분선 [패널] ┃ [재생 도구] ┃ [볼륨] ┃ [창]
             f = QFrame(objectName="barSep")
             metrics.fix(f, 1, 22)

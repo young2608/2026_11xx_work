@@ -23,6 +23,7 @@ NIGHT = {"sunny": "night_sunny", **{f"light{i}": f"dark{i}" for i in range(1, 6)
 
 
 TASKBAR_ICON = "#F2F4F8"                  # 작업 표시줄 미리보기 버튼 (Windows 작업 표시줄 색 = 앱 테마와 무관)
+APP_ICON = {"bg": "#101018", "bar": "#00E64D", "base": "#C9A227"}   # v033 (f61 H7): 앱 아이콘 = Android 런처 아이콘 색 (테마와 무관)
 
 
 class Skin:

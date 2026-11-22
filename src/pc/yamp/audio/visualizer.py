@@ -97,6 +97,14 @@ def frame_stats(mono: np.ndarray, n: int = WAVE_N) -> tuple[list[float], float, 
     return np.clip(x[idx], -1, 1).astype(float).tolist(), min(1.0, rms), min(1.0, peak)   # v018: tolist
 
 
+def _frames(buf) -> int:
+    """QAudioBuffer 프레임 수 (모르면 0 → 변환해서 이어 붙임)"""
+    try:
+        return int(buf.frameCount())
+    except Exception:  # noqa — 가짜 버퍼(테스트) 등
+        return 0
+
+
 class SpectrumAnalyzer(QObject):
     levels = pyqtSignal(list)
     frame = pyqtSignal(object)          # (wave list, rms, peak) — 시각화 블럭 (v014)
@@ -106,11 +114,16 @@ class SpectrumAnalyzer(QObject):
         self.min_dt = 1.0 / fps
         self._last = 0.0
         self._acc = np.zeros(0, dtype=np.float32)
+        self._pending = None
         self.enabled = True
 
     def feed(self, buf):
         if not self.enabled:
+            self._pending = None
             return
+        if time.monotonic() - self._last < self.min_dt and _frames(buf) >= FFT_N:
+            self._pending = buf                        # v032 (f60 P4): 이번엔 그리지 않음 → 변환은 미룸 (QAudioBuffer 는 참조만, 복사 없음)
+            return                                     #   다음 버퍼도 1024 프레임 이상이면 이 버퍼는 끝내 변환하지 않음
         r = buffer_to_mono(buf, FFT_N)                 # v022 (N6): 끝 1024 프레임만
         if r is None:
             return
@@ -118,7 +131,13 @@ class SpectrumAnalyzer(QObject):
         if a.size >= FFT_N:                     # v018: 긴 버퍼는 끝 FFT_N 표본만 (이어 붙일 필요 없음)
             self._acc = a[-FFT_N:]
         else:
+            pend = getattr(self, "_pending", None)
+            if pend is not None:                       # 미뤄 둔 버퍼가 바로 앞 → 그 끝을 먼저 (전과 같은 이어 붙임)
+                rp = buffer_to_mono(pend, FFT_N)
+                if rp is not None:
+                    self._acc = rp[0][-FFT_N:]
             self._acc = np.concatenate([self._acc, a])[-FFT_N:]
+        self._pending = None
         now = time.monotonic()
         if now - self._last < self.min_dt:
             return

@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox, QHBoxLayout, 
 from ..core.bg import BgEmitter, BgTask
 from ..lyrics import lrc
 from ..lyrics.editor import LyricEditor
+from . import metrics
 from .iconbutton import IconButton
 
 
@@ -20,7 +21,7 @@ class LyricsEditorDialog(QDialog):
         super().__init__(parent)
         self.ctrl = ctrl
         self.setWindowTitle("가사 편집기 — F9: 시각 찍기, Alt+←/→: ±0.1초, 줄 더블클릭: 그 위치로")
-        self.resize(820, 560)
+        self.resize(metrics.dp(820), metrics.dp(560))           # v033 (f61 H5): 글자 배율
         self.ed = LyricEditor.from_lyrics(ctrl.cur_lyrics)
         if not self.ed.lines:
             self.ed = LyricEditor.from_text("")
@@ -123,7 +124,7 @@ class LyricsPickDialog(QDialog):
         super().__init__(parent)
         self.ctrl = ctrl
         self.setWindowTitle("다른 가사 찾기")
-        self.resize(760, 520)
+        self.resize(metrics.dp(760), metrics.dp(520))           # v033 (f61 H5): 글자 배율
         q = ctrl.lyrics.last_query
         v = QVBoxLayout(self)
         row = QHBoxLayout()

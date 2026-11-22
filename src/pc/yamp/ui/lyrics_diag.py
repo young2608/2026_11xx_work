@@ -6,6 +6,7 @@ from PyQt6.QtGui import QDesktopServices, QFont, QGuiApplication
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QHBoxLayout, QLabel, QPlainTextEdit, QVBoxLayout
 
 from ..core.bg import BgEmitter, BgTask
+from . import metrics
 from .iconbutton import IconButton
 
 
@@ -13,7 +14,7 @@ class LyricsDiagDialog(QDialog):
     def __init__(self, ctrl, parent=None):
         super().__init__(parent)
         self.setWindowTitle("가사 진단")
-        self.resize(760, 560)
+        self.resize(metrics.dp(760), metrics.dp(560))           # v033 (f61 H5): 글자 배율
         self.ctrl = ctrl
         v = QVBoxLayout(self)
         self.status = QLabel("지금 곡으로 가사를 새로 찾으며 단계별로 기록하는 중… (최대 몇 초)")

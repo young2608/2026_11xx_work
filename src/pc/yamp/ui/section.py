@@ -18,8 +18,8 @@ class Section(QFrame):
             self.setObjectName("card")
         self.key, self.cfg = key, cfg
         v = QVBoxLayout(self)
-        v.setContentsMargins(8, 4, 8, 6)
-        v.setSpacing(2)
+        metrics.margins(v, 8, 4, 8, 6)
+        metrics.spacing(v, 2)
         head = QHBoxLayout()
         head.setContentsMargins(0, 0, 0, 0)
         self.btn = QToolButton(objectName="secHeader")

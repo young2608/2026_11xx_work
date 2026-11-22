@@ -10,11 +10,11 @@ vr0.1.0.011: 색은 모두 테마 토큰 (skin.current()) — set_skin() 이 오
 import math
 
 from PyQt6.QtCore import QPointF, QRectF, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QPainter, QPainterPath, QPen
+from PyQt6.QtGui import QColor, QFontMetrics, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import QLabel, QSizePolicy, QWidget
 
 from .hidpi import snap
-from . import skin as skinmod
+from . import metrics, skin as skinmod
 from .neon_base import _Skinned, _glow_pen, band_color  # noqa: F401
 # v019 (R5): 곡 파형 시크바 · 접기 블럭은 각자 파일로 — 이전처럼 neon 에서도 가져갈 수 있게 다시 내보냄
 from .section import Section  # noqa: F401
@@ -36,7 +36,7 @@ class Knob(_Skinned, QWidget):
         self.step = step
         self._v = float(value)
         self._drag = None
-        self.setMinimumSize(74, 96)
+        metrics.fix(self, min_w=74, min_h=96)  # v033 (f61 H5): 글자 배율
         self.setCursor(Qt.CursorShape.SizeVerCursor)
         self.setToolTip(f"{label}: 위·아래로 끌기 / 휠 — 더블클릭 = 초기화")
 
@@ -83,7 +83,8 @@ class Knob(_Skinned, QWidget):
         s = self.skin
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        size = min(self.width(), self.height() - 30)
+        lh = _line_h(self.font())                   # v033 (f61 H6): 글자 줄 높이 (10pt = 14 그대로, 큰 글자면 커짐 — 전에는 잘림)
+        size = min(self.width(), self.height() - (2 * lh + 2))
         r = QRectF((self.width() - size) / 2 + 6, 6, size - 12, size - 12)
         start, span = 225, -270                     # Qt: 0° = 3시, 반시계 +
         # 배경 호
@@ -109,9 +110,14 @@ class Knob(_Skinned, QWidget):
         # 글자
         p.setPen(QColor(s.dim))
         p.setFont(skinmod.role_font(self.font(), "tiny"))
-        p.drawText(QRectF(0, size - 6, self.width(), 14), Qt.AlignmentFlag.AlignHCenter, self.label)
+        p.drawText(QRectF(0, size - 6, self.width(), lh), Qt.AlignmentFlag.AlignHCenter, self.label)
         p.setPen(QColor(s.text))
-        p.drawText(QRectF(0, size + 8, self.width(), 14), Qt.AlignmentFlag.AlignHCenter, self.fmt(self._v))
+        p.drawText(QRectF(0, size - 6 + lh, self.width(), lh), Qt.AlignmentFlag.AlignHCenter, self.fmt(self._v))
+
+
+def _line_h(base) -> int:
+    """작은 글자(tiny) 한 줄 칸 높이 — 10pt 기준 14px, 글꼴이 그보다 크면 글꼴 높이 (v033 f61 H6)"""
+    return max(14, QFontMetrics(skinmod.role_font(base, "tiny")).height())
 
 
 # ---------------------------------------------------------------- 10밴드 EQ
@@ -125,7 +131,7 @@ class EqSliders(_Skinned, QWidget):
         self.vals = [0.0] * 11
         self.enabled_look = True
         self._drag = -1
-        self.setMinimumSize(340, 200)
+        metrics.fix(self, min_w=340, min_h=200)  # v033 (f61 H5): 글자 배율
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setToolTip("위·아래로 끌기 — 더블클릭 = 0 dB")
 
@@ -134,7 +140,8 @@ class EqSliders(_Skinned, QWidget):
         self.update()
 
     def _geom(self):
-        top, bot = 10, self.height() - 40
+        lh = _line_h(self.font())                   # v033 (f61 H6): 아래 글자 2줄 자리 (10pt = 40 그대로)
+        top, bot = 10, self.height() - (2 * lh + 12)
         step = self.width() / 11
         return top, bot, step
 
@@ -181,6 +188,7 @@ class EqSliders(_Skinned, QWidget):
         p.drawLine(QPointF(4, snap(mid)), QPointF(self.width() - 4, snap(mid)))     # v016 G6: 1px 선 픽셀 가운데
         f = skinmod.role_font(self.font(), "tiny")
         p.setFont(f)
+        lh = _line_h(self.font())
         for i, v in enumerate(self.vals):
             x = self._x(i)
             col = band_color(s, i)
@@ -197,13 +205,14 @@ class EqSliders(_Skinned, QWidget):
             hc.setAlpha(alpha)
             p.setPen(QPen(hc, 1.5))
             p.setBrush(skinmod.qcolor("surface", alpha))
-            p.drawRoundedRect(QRectF(x - 9, y - 6, 18, 12), 3, 3)
+            hw, hh, gw = metrics.dp(9), metrics.dp(6), metrics.dp(5)      # v033 (f61 H6): 손잡이도 글자 배율 (10pt = 18×12 그대로)
+            p.drawRoundedRect(QRectF(x - hw, y - hh, 2 * hw, 2 * hh), 3, 3)
             p.setPen(QPen(skinmod.qcolor("dim", alpha), 1.5))
-            p.drawLine(QPointF(x - 5, y), QPointF(x + 5, y))
+            p.drawLine(QPointF(x - gw, y), QPointF(x + gw, y))
             p.setPen(QColor(s.dim))
-            p.drawText(QRectF(x - step / 2, bot + 6, step, 14), Qt.AlignmentFlag.AlignHCenter, self.LABELS[i])
+            p.drawText(QRectF(x - step / 2, bot + 6, step, lh), Qt.AlignmentFlag.AlignHCenter, self.LABELS[i])
             p.setPen(QColor(s.text))
-            p.drawText(QRectF(x - step / 2, bot + 20, step, 14), Qt.AlignmentFlag.AlignHCenter, f"{v:+g}" if v else "0")
+            p.drawText(QRectF(x - step / 2, bot + 6 + lh, step, lh), Qt.AlignmentFlag.AlignHCenter, f"{v:+g}" if v else "0")
 
 
 # ---------------------------------------------------------------- 응답 곡선
@@ -212,7 +221,7 @@ class ResponseCurve(_Skinned, QWidget):
         super().__init__(parent)
         self.curve: list[float] = []     # dB (log_freqs 순서)
         self.levels: list[float] = []    # 스펙트럼 0..1
-        self.setMinimumHeight(80)
+        metrics.fix(self, min_h=80)  # v033 (f61 H5): 글자 배율
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
     def set_curve(self, db_list):
@@ -255,8 +264,9 @@ class ResponseCurve(_Skinned, QWidget):
         p.drawPath(path)
         p.setPen(QColor(s.dim))
         p.setFont(skinmod.role_font(self.font(), "tiny"))
-        p.drawText(QRectF(4, 2, 80, 14), Qt.AlignmentFlag.AlignLeft, "+24 dB")
-        p.drawText(QRectF(4, h - 14, 80, 12), Qt.AlignmentFlag.AlignLeft, "−24 dB")
+        lh = _line_h(self.font())                   # v033 (f61 H6): 10pt = 14 · 12 그대로
+        p.drawText(QRectF(4, 2, max(80, lh * 6), lh), Qt.AlignmentFlag.AlignLeft, "+24 dB")
+        p.drawText(QRectF(4, h - lh, max(80, lh * 6), lh - 2), Qt.AlignmentFlag.AlignLeft, "−24 dB")
 
 
 def label(text, dim=True):

@@ -3,6 +3,7 @@ from PyQt6.QtCore import QRectF, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QBrush, QColor, QFont, QFontMetrics, QLinearGradient, QPainter
 from PyQt6.QtWidgets import QLabel, QSlider, QStyle, QStyleOptionSlider, QWidget
 
+from . import metrics
 from .skin import Skin
 
 
@@ -27,7 +28,7 @@ class LcdTime(QWidget):
         self.remaining = False
         self.playing = False
         self.blink = True
-        self.setMinimumSize(120, 44)
+        metrics.fix(self, min_w=120, min_h=44)  # v033 (f61 H5): 글자 배율
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._font = mono_font(24)
         self._blink_t = QTimer(self, interval=500, timeout=self._on_blink)
@@ -96,7 +97,7 @@ class ScrollTitle(QWidget):
         self._text = "yMp3Player"
         self._x = 0
         self._font = mono_font(11, False)
-        self.setMinimumHeight(22)
+        metrics.fix(self, min_h=22)  # v033 (f61 H5): 글자 배율
         self._t = QTimer(self, interval=40, timeout=self._step)   # 제목이 칸보다 길고 보일 때만 돎 (_sync_timer)
 
     def set_skin(self, s):
@@ -174,7 +175,7 @@ class SpectrumWidget(QWidget):
         self.skin = skin
         self.n = n
         self.sm = BandSmoother(n)
-        self.setMinimumSize(110, 36)
+        metrics.fix(self, min_w=110, min_h=36)  # v033 (f61 H5): 글자 배율
         self._decay = QTimer(self, interval=33, timeout=self._fall)   # 막대가 다 내려가면 멈춤, set_levels 때 다시 시작
 
     vals = property(lambda self: self.sm.v)

@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QListWidget, QListW
                              QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from ..data.scan import folder_summary, summary_text  # noqa: F401  (v019 R1: data/scan.py 로 옮김, 이전 import 호환)
-from . import icons, tips
+from . import icons, metrics, tips
 from .iconbutton import IconButton
 from .section import Section
 
@@ -36,12 +36,12 @@ class FolderView(QWidget):
         self._cur = ""
         self._tracks = []
         v = QVBoxLayout(self)
-        v.setContentsMargins(2, 2, 2, 2)
-        v.setSpacing(6)
+        metrics.margins(v, 2, 2, 2, 2)
+        metrics.spacing(v, 6)
 
         # 동작 줄
         bar = QHBoxLayout()
-        bar.setSpacing(4)
+        metrics.spacing(bar, 4)
         self.b_play = IconButton("play", "folder_play", self.play)
         self.b_shuf = IconButton("shuffle", "folder_shuffle", lambda: self.play(shuffle=True))
         self.sub = IconButton("addFolder", "folder_sub", checkable=True)     # 하위 폴더 포함 (켜짐 = 노란색)

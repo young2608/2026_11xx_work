@@ -89,19 +89,78 @@ def _parse_ok(txt, source):
 def resolve_full(q: Query, providers, cache: "LyricsCache | None", use_cache: bool = True,
                  notfound: NotFoundStore | None = None, min_score: int = MIN_SCORE,
                  timeout_s: float = 6.0, save_beside: bool = False, log_fn=None) -> Result:
-    """Qt 비의존 — 테스트 대상. use_cache=False(다시 찾기)면 캐시·실패 기억을 무시"""
+    """Qt 비의존 — 테스트 대상. use_cache=False(다시 찾기)면 캐시·실패 기억을 무시
+    순서: 캐시 → ① 로컬 · 내장 (차례대로) → ② 실패 기억 → ③ 원격 동시 조회 → 점수로 고르기
+    (vr0.1.0.030 f58: 93줄 → 단계마다 함수)"""
     say = log_fn or (lambda s: None)
     key = cache_key(q.path)
     if cache and use_cache:
-        hit = cache.get(q)
-        if hit:
-            ly = lrc.parse(hit[0], hit[1])
-            if not lrc.is_empty(ly):
-                say(f"캐시: {hit[1]}")
-                return Result(ly, "found", hit[1])
+        r = _from_cache(q, cache, say)
+        if r:
+            return r
     simple = [p for p in providers if not getattr(p, "remote", False) or not hasattr(p, "candidates")]
     remote = [p for p in providers if getattr(p, "remote", False) and hasattr(p, "candidates")]
-    # 1) 로컬 · 내장 · (테스트용 단순 공급자) — 차례대로
+    r = _from_simple(q, simple, cache, say)
+    if r:
+        return r
+    if not remote:
+        return Result(None, "not_found" if simple else "disabled")
+    if notfound and use_cache:
+        age = notfound.age_days(key)
+        if age is not None:
+            say(f"실패 기억: {age}일 전 확인 → 자동 검색 안 함")
+            return Result(None, "remembered", days_ago=age)
+    var = make_variants(q.title, q.artist) if q.title else []
+    if not var:
+        return Result(None, "not_found")
+    say("검색어: " + " · ".join(f"{t} / {a}" for t, a in var))
+    cands, errors = _gather_remote(q, var, remote, timeout_s, say)
+    best = cands[0] if cands else None
+    if best and best["score"] >= min_score:
+        ly = _parse_ok(best["lyric"], best["source"])
+        if ly is not None:
+            say(f"선택: {best['source']} {best.get('artist', '')} - {best.get('title', '')} ({best['score']}점)")
+            _cache_put(cache, q, best["lyric"], best["source"])
+            if notfound:
+                notfound.remove(key)
+            if save_beside:
+                _save_beside(q, best["lyric"])
+            return Result(ly, "found", best["source"], best["score"], cands, errors=errors)
+    if not cands and errors:
+        offline = all(_is_offline_error(e) for e in errors)
+        say("결과: " + ("오프라인" if offline else "서버 오류"))
+        return Result(None, "offline" if offline else "server", candidates=cands, errors=errors)
+    if notfound and not errors:
+        notfound.add(key)                      # 오류 없이 검색이 끝났는데 없음 → 기억
+    reason = "low_score" if cands else "not_found"
+    say(f"결과: {reason} (최고 {best['score'] if best else 0}점, 기준 {min_score})")
+    return Result(None, reason, candidates=cands, errors=errors)
+
+
+def _cache_put(cache, q: Query, text: str, source: str):
+    if cache:
+        try:
+            cache.put(q, text, source)
+        except OSError as e:
+            log.warning("cache write: %s", e)
+
+
+def _is_offline_error(e: str) -> bool:
+    return "연결" in e or "시간 초과" in e or "urlopen" in e or "Errno" in e
+
+
+def _from_cache(q: Query, cache, say) -> Result | None:
+    hit = cache.get(q)
+    if hit:
+        ly = lrc.parse(hit[0], hit[1])
+        if not lrc.is_empty(ly):
+            say(f"캐시: {hit[1]}")
+            return Result(ly, "found", hit[1])
+    return None
+
+
+def _from_simple(q: Query, simple, cache, say) -> Result | None:
+    """① 로컬 · 내장 · (테스트용 단순 공급자) — 차례대로, 처음 찾은 것"""
     for p in simple:
         try:
             txt = p.fetch(q)
@@ -112,25 +171,14 @@ def resolve_full(q: Query, providers, cache: "LyricsCache | None", use_cache: bo
         say(f"{p.name}: {'있음' if ly else '없음'}")
         if ly is None:
             continue
-        if cache and p.name not in ("local", "embedded"):       # 원격 결과만 캐시
-            try:
-                cache.put(q, txt, p.name)
-            except OSError as e:
-                log.warning("cache write: %s", e)
+        if p.name not in ("local", "embedded"):       # 원격 결과만 캐시
+            _cache_put(cache, q, txt, p.name)
         return Result(ly, "found", p.name)
-    if not remote:
-        return Result(None, "not_found" if simple else "disabled")
-    # 2) 실패 기억
-    if notfound and use_cache:
-        age = notfound.age_days(key)
-        if age is not None:
-            say(f"실패 기억: {age}일 전 확인 → 자동 검색 안 함")
-            return Result(None, "remembered", days_ago=age)
-    # 3) 원격 동시 조회
-    var = make_variants(q.title, q.artist) if q.title else []
-    if not var:
-        return Result(None, "not_found")
-    say("검색어: " + " · ".join(f"{t} / {a}" for t, a in var))
+    return None
+
+
+def _gather_remote(q: Query, var, remote, timeout_s: float, say) -> tuple[list[dict], list[str]]:
+    """③ 원격 공급자 동시 조회 → (점수 순 후보, 오류 목록)"""
     cands: list[dict] = []
     errors: list[str] = []
     for p in remote:
@@ -155,30 +203,7 @@ def resolve_full(q: Query, providers, cache: "LyricsCache | None", use_cache: bo
         say(f"{futs[f].name}: 시간 초과 ({timeout_s:g}초)")
     ex.shutdown(wait=False, cancel_futures=True)
     cands.sort(key=lambda c: (-c["score"], 0 if c.get("synced") else 1))
-    best = cands[0] if cands else None
-    if best and best["score"] >= min_score:
-        ly = _parse_ok(best["lyric"], best["source"])
-        if ly is not None:
-            say(f"선택: {best['source']} {best.get('artist', '')} - {best.get('title', '')} ({best['score']}점)")
-            if cache:
-                try:
-                    cache.put(q, best["lyric"], best["source"])
-                except OSError as e:
-                    log.warning("cache write: %s", e)
-            if notfound:
-                notfound.remove(key)
-            if save_beside:
-                _save_beside(q, best["lyric"])
-            return Result(ly, "found", best["source"], best["score"], cands, errors=errors)
-    if not cands and errors:
-        offline = all(("연결" in e or "시간 초과" in e or "urlopen" in e or "Errno" in e) for e in errors)
-        say("결과: " + ("오프라인" if offline else "서버 오류"))
-        return Result(None, "offline" if offline else "server", candidates=cands, errors=errors)
-    if notfound and not errors:
-        notfound.add(key)                      # 오류 없이 검색이 끝났는데 없음 → 기억
-    reason = "low_score" if cands else "not_found"
-    say(f"결과: {reason} (최고 {best['score'] if best else 0}점, 기준 {min_score})")
-    return Result(None, reason, candidates=cands, errors=errors)
+    return cands, errors
 
 
 def _save_beside(q: Query, text: str):

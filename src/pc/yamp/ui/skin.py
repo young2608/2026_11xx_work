@@ -101,14 +101,15 @@ FONT_FAMILIES = ["Segoe UI", "Segoe UI Variable Text", "Malgun Gothic", "맑은 
 
 # ---- v016 (f29 G2 · G7 · G9): 글자 크기 5단계 · 힌팅 자동 · 글꼴 엔진(진단용)
 TYPE_SCALE = {"h1": 1.7, "h2": 1.3, "body": 1.0, "cap": 0.9, "tiny": 0.8}   # 큰 제목 · 제목 · 본문 · 보조 · 그래프 눈금
-FONT_SIZES = (9, 10, 11, 12, 13, 14)                                       # 보기 → 글자 크기 (v023: 13 · 14 추가)
+FONT_SIZES = (9, 10, 11, 12, 13, 14, 15, 16)                               # 보기 → 글자 크기 (v023: 13 · 14 · v033: 15 · 16 — 4K 100 %)
+FONT_MAX = FONT_SIZES[-1]
 _BASE_PT = 10.0
 
 
 def set_font_size(pt) -> float:
     global _BASE_PT
     try:
-        _BASE_PT = max(8.0, min(14.0, float(pt)))
+        _BASE_PT = max(8.0, min(float(FONT_MAX), float(pt)))
     except (TypeError, ValueError):
         _BASE_PT = 10.0
     return _BASE_PT
@@ -176,9 +177,41 @@ def apply_app_font(app, pt: float | None = None, hinting: str = "auto", dpr: flo
                             "vertical": QFont.HintingPreference.PreferVerticalHinting,
                             "none": QFont.HintingPreference.PreferNoHinting}[h])
     f.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
+    if not hasattr(app, "_yamp_mb_font"):                  # v033: 처음 한 번 — 플랫폼 메뉴 막대 글꼴(Windows = Segoe UI 9pt) 기억
+        try:
+            app._yamp_mb_font = QFont(app.font("QMenuBar"))
+        except (TypeError, AttributeError):
+            app._yamp_mb_font = QFont(f)
     app.setFont(f)
+    # v033 (f61 H2): 메뉴 막대는 플랫폼 기본 글꼴(Windows Segoe UI 9pt)이 따로 정해져 글자 크기를 바꿔도 그대로였음
+    #   (4K 에서 16pt 를 골라도 메뉴 막대만 9pt) → 크기만 보조 글자(cap, 10pt 기준 9pt = Windows 기본과 같음)로 같이 따라감
+    for w in (app.topLevelWidgets() if hasattr(app, "topLevelWidgets") else ()):
+        sync_menubar_font(w)                               # 이미 만든 메뉴 막대
     app._yamp_font = (font_pt("body"), h, dpr)
     return h
+
+
+def menubar_font():
+    """메뉴 막대 글꼴 = 플랫폼 메뉴 막대 글꼴 모양 그대로 + 크기만 보조 글자(cap) (10pt 기준 9pt = Windows 기본과 같음)"""
+    from PyQt6.QtGui import QFont
+    from PyQt6.QtWidgets import QApplication
+    app = QApplication.instance()
+    base = getattr(app, "_yamp_mb_font", None)
+    fm = QFont(base) if base is not None else QFont()
+    fm.setPointSizeF(font_pt("cap"))
+    return fm
+
+
+def sync_menubar_font(win) -> bool:
+    """v033 (f61 H2): 창의 메뉴 막대 글꼴을 지금 글자 크기로 (QMainWindow 가 아니거나 메뉴 막대가 없으면 False).
+    앱 전체 'QMenuBar' 글꼴(app.setFont(f, 'QMenuBar'))은 쓰지 않음 — 다른 위젯 배치가 1px 달라져 10pt 화면이 바뀌었음"""
+    from PyQt6.QtWidgets import QMainWindow
+    if not isinstance(win, QMainWindow) or win.menuWidget() is None:
+        return False
+    fm = menubar_font()
+    if win.menuWidget().font() != fm:
+        win.menuWidget().setFont(fm)
+    return True
 
 
 def palette(s: Skin) -> QPalette:
@@ -195,136 +228,4 @@ def palette(s: Skin) -> QPalette:
     return pal
 
 
-def stylesheet(s: Skin) -> str:
-    grad = f"qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {s.fill1}, stop:1 {s.fill2})"
-    _t = QColor(s.text)                                # v016 G1: 카드 아래 선 = 글자색 18 % (그림자 효과 대신 — 글자 선명도 유지)
-    deep = f"rgba({_t.red()},{_t.green()},{_t.blue()},0.18)"
-    grad_r = f"qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {s.fill2}, stop:1 {s.fill1})"
-    from .metrics import scale_css                     # v023: px 크기 × 글자 배율 (10pt = 그대로)
-    return scale_css(f"""
-QMainWindow, QWidget#root {{ background:{s.bg}; color:{s.text}; }}
-QMenuBar {{ background:{s.bg}; color:{s.text}; border-bottom:1px solid {s.line}; }}
-QMenuBar::item {{ background:transparent; padding:4px 10px; }}
-QMenuBar::item:selected {{ background:{s.fill1_soft}; color:{s.accent_text}; border-radius:6px; }}
-QMenu {{ background:{s.surface}; color:{s.text}; border:1px solid {s.line}; padding:4px; }}
-QMenu::item:selected {{ background:{s.fill1_soft}; color:{s.accent_text}; }}
-QMenu::item:disabled {{ color:{s.dim}; }}
-QMenu::separator {{ height:1px; background:{s.line}; margin:4px 8px; }}
-QFrame#topPanel {{ background:{s.surface}; border:1px solid {s.line}; border-radius:14px; }}
-QFrame#card {{ background:{s.surface}; border:1px solid {s.line}; border-bottom:1px solid {deep}; border-radius:14px; }}
-QToolButton#secHeader {{ background:transparent; border:none; color:{s.dim}; font-weight:bold; text-align:left;
-                        padding:2px 4px; min-height:18px; font-size:{fs('body')}; }}
-QToolButton#secHeader:hover {{ color:{s.text}; }}
-QFrame#lcd {{ background:{s.lcd_bg}; border:1px solid {s.line}; border-radius:10px; }}
-QLabel {{ color:{s.text}; background:transparent; }}
-QLabel#info {{ color:{s.accent_text}; font-family:Consolas,'DejaVu Sans Mono',monospace; font-size:{fs('cap')}; }}
-QLabel#verLabel {{ color:{s.dim}; padding:0 8px; font-size:{fs('cap')}; }}
-QLabel#clockLabel {{ color:{s.text}; padding:0 6px; font-size:{fs('cap')}; }}
-QLabel#topSep {{ color:{s.line}; padding:0 2px; font-size:{fs('cap')}; }}
-QToolButton {{ background:{s.surface2}; color:{s.text}; border:1px solid {s.line}; border-radius:8px;
-              min-width:30px; min-height:24px; font-size:{fs('h2')}; padding:1px 3px; }}
-QToolButton:hover {{ border-color:{s.fill1}; }}
-QToolButton:checked {{ background:{s.fill1}; color:{s.on_fill}; border-color:{s.fill1}; }}
-QToolButton#round {{ border-radius:20px; min-width:40px; min-height:40px; }}
-QToolButton#roundBig {{ border-radius:26px; min-width:52px; min-height:52px; background:{grad}; border:none; color:{s.on_fill}; }}
-QToolButton#pill {{ background:{s.surface2}; color:{s.text}; border:1px solid {s.line}; border-radius:12px;
-                   padding:3px 12px; min-height:22px; font-size:{fs('body')}; }}
-QToolButton#pill:hover {{ border-color:{s.fill1}; }}
-QToolButton#pill:checked {{ background:{s.fill1}; color:{s.on_fill}; border-color:{s.fill1}; font-weight:bold; }}
-QSlider::groove:horizontal {{ height:6px; background:{s.wave_rest}; border:none; border-radius:3px; }}
-QSlider::sub-page:horizontal {{ background:{s.fill1}; border-radius:3px; }}
-QSlider::handle:horizontal {{ width:12px; height:12px; margin:-4px 0; background:{s.surface}; border:2px solid {s.fill2};
-                             border-radius:7px; }}
-QSlider::groove:vertical {{ width:6px; background:{s.wave_rest}; border:none; border-radius:3px; }}
-QSlider::add-page:vertical {{ background:{s.fill1}; border-radius:3px; }}
-QSlider::handle:vertical {{ width:12px; height:12px; margin:0 -4px; background:{s.surface}; border:2px solid {s.fill2};
-                           border-radius:7px; }}
-QProgressBar {{ background:{s.wave_rest}; border:none; border-radius:2px; }}
-QProgressBar::chunk {{ background:{grad}; border-radius:2px; }}
-QListView, QTreeWidget, QListWidget {{ background:{s.surface}; color:{s.text}; border:1px solid {s.line}; border-radius:10px;
-            font-size:{fs('body')}; outline:none; }}
-QListView::item:hover, QTreeWidget::item:hover, QListWidget::item:hover {{ background:{s.surface2}; }}
-QListView::item:selected, QTreeWidget::item:selected, QListWidget::item:selected {{ background:{s.fill1_soft};
-            color:{s.accent_text}; }}
-QHeaderView::section {{ background:{s.surface2}; color:{s.dim}; border:none; border-bottom:1px solid {s.line}; padding:4px 6px; }}
-QTabWidget::pane {{ border:1px solid {s.line}; border-radius:10px; background:{s.surface}; top:-1px; }}
-QTabBar::tab {{ background:{s.surface2}; color:{s.text}; padding:4px 12px; border:1px solid {s.line}; margin-right:2px;
-               border-top-left-radius:8px; border-top-right-radius:8px; }}
-QTabBar::tab:hover {{ border-color:{s.fill1}; }}
-QTabBar::tab:selected {{ background:{s.fill1}; color:{s.on_fill}; border-color:{s.fill1}; }}
-QScrollArea {{ background:{s.bg}; border:none; }}
-QWidget#scrollInner {{ background:{s.bg}; }}
-QScrollBar:vertical {{ background:transparent; width:10px; margin:0; }}
-QScrollBar:horizontal {{ background:transparent; height:10px; margin:0; }}
-QScrollBar::handle:vertical {{ background:{s.line}; border-radius:4px; min-height:24px; margin:1px; }}
-QScrollBar::handle:horizontal {{ background:{s.line}; border-radius:4px; min-width:24px; margin:1px; }}
-QScrollBar::handle:hover {{ background:{s.dim}; }}
-QScrollBar::add-line, QScrollBar::sub-line {{ width:0; height:0; }}
-QScrollBar::add-page, QScrollBar::sub-page {{ background:transparent; }}
-QPushButton {{ background:{s.surface2}; color:{s.text}; border:1px solid {s.line}; border-radius:8px; padding:4px 12px; }}
-QPushButton:hover {{ border-color:{s.fill1}; }}
-QPushButton:pressed, QPushButton:checked {{ background:{s.fill1}; color:{s.on_fill}; border-color:{s.fill1}; }}
-QPushButton:default {{ border-color:{s.fill2}; }}
-QComboBox {{ background:{s.surface2}; color:{s.text}; border:1px solid {s.line}; border-radius:8px; padding:3px 8px; }}
-QComboBox:hover {{ border-color:{s.fill1}; }}
-QComboBox QAbstractItemView {{ background:{s.surface}; color:{s.text}; border:1px solid {s.line};
-            selection-background-color:{s.fill1_soft}; selection-color:{s.accent_text}; }}
-QDialog, QMessageBox, QInputDialog {{ background:{s.bg}; color:{s.text}; }}
-QPlainTextEdit, QTextEdit, QTextBrowser {{ background:{s.surface}; color:{s.text}; border:1px solid {s.line}; border-radius:8px;
-            selection-background-color:{s.fill1_soft}; selection-color:{s.accent_text}; }}
-QCheckBox, QRadioButton {{ color:{s.text}; background:transparent; }}
-QSpinBox, QDoubleSpinBox {{ background:{s.surface2}; color:{s.text}; border:1px solid {s.line}; border-radius:6px; padding:2px 4px; }}
-QStatusBar {{ background:{s.nav}; color:{s.dim}; border-top:1px solid {s.line}; }}
-QStatusBar QLabel {{ color:{s.dim}; }}
-QSplitter::handle {{ background:{s.bg}; }}
-QSplitter::handle:hover {{ background:{s.fill1_soft}; }}
-QSplitter#foldSplit::handle {{ background:transparent; margin:3px 40%; border-radius:3px; }}
-QSplitter#foldSplit::handle:hover {{ background:{s.fill1}; }}
-QLineEdit {{ background:{s.surface2}; color:{s.text}; border:1px solid {s.line}; border-radius:12px; padding:3px 8px;
-            selection-background-color:{s.fill1_soft}; selection-color:{s.accent_text}; }}
-QLineEdit:focus {{ border-color:{s.fill1}; }}
-QLineEdit QToolButton {{ background:transparent; border:none; min-width:0px; min-height:0px; padding:0px; margin:0px; }}
-QToolTip {{ background:{s.tooltip_bg}; color:{s.text}; border:1px solid {s.line}; border-radius:6px; padding:6px 8px; font-size:{fs('cap')}; }}
-QToolButton#iconBtn {{ background:transparent; border:none; border-radius:16px; min-width:30px; min-height:30px; padding:3px; }}
-QToolButton#iconBtn:hover {{ background:{s.surface2}; }}
-QToolButton#iconBtn:checked {{ background:{s.fill1_soft}; }}
-QToolButton#iconBtn:disabled {{ background:transparent; }}
-QToolButton#playBig {{ background:{grad}; border:none; border-radius:23px; min-width:46px; min-height:46px; }}
-QToolButton#playBig:hover {{ background:{grad_r}; }}
-QToolButton#railBtn {{ background:transparent; border:none; border-radius:10px; min-width:38px; min-height:38px; }}
-QToolButton#railBtn:hover {{ background:{s.surface2}; }}
-QToolButton#railBtn:checked {{ background:{s.fill1_soft}; border-left:3px solid {s.fill2}; }}
-QFrame#rail {{ background:{s.nav}; border:none; border-right:1px solid {s.line}; }}
-QFrame#playerBar {{ background:{s.nav}; border:none; border-top:1px solid {s.line}; }}
-QFrame#sidePanel {{ background:{s.surface}; border:none; border-left:1px solid {s.line}; }}
-QLabel#barTitle {{ font-weight:bold; font-size:{fs('body')}; }}
-QLabel#barSub, QLabel#barTime {{ color:{s.dim}; font-size:{fs('cap')}; }}
-QLabel#pageTitle {{ font-size:{fs('h2')}; font-weight:bold; }}
-QLabel#nowTitle {{ font-size:{fs('h1')}; font-weight:bold; color:{s.text}; }}
-QLabel#nowSub {{ font-size:{fs('body')}; color:{s.dim}; }}
-QLabel#cardTitle {{ font-size:{fs('body')}; font-weight:bold; color:{s.dim}; }}
-QLabel#emptyHint {{ font-size:{fs('body')}; color:{s.dim}; }}
-QFrame#railSep, QFrame#barSep {{ background:{s.line}; border:none; }}
-QListWidget#upNext {{ background:transparent; border:none; }}
-QListWidget#upNext::item {{ padding:5px 6px; border-radius:6px; }}
-QListWidget#upNext::item:hover {{ background:{s.fill1_soft}; }}
-/* ---- v016 (f29 G8): 전체 다듬기 — 줄 높이 · 메뉴 · 초점 · 스크롤바 · 머리글 (간격 4 / 8 / 12px) */
-QListView::item, QTreeWidget::item, QListWidget::item {{ padding:4px 8px; border-radius:6px; }}
-QListWidget#upNext::item {{ padding:6px 8px; }}
-QMenu {{ padding:6px; border-radius:10px; }}
-QMenu::item {{ padding:6px 28px 6px 12px; border-radius:6px; }}
-QMenu::icon {{ padding-left:8px; }}
-QToolButton#iconBtn:focus {{ border:1px solid {s.fill1}; }}
-QToolButton#iconBtn:pressed {{ background:{s.fill1_soft}; }}
-QPushButton:focus, QComboBox:focus, QSpinBox:focus {{ border-color:{s.fill1}; }}
-QScrollBar:vertical {{ width:8px; }}
-QScrollBar:horizontal {{ height:8px; }}
-QScrollBar::handle:vertical, QScrollBar::handle:horizontal {{ border-radius:3px; }}
-QScrollBar:vertical:hover {{ width:10px; }}
-QHeaderView::section {{ padding:6px 8px; font-weight:bold; }}
-QToolTip {{ padding:6px 10px; }}
-QStatusBar {{ font-size:{fs('cap')}; }}
-QLabel#dimLabel {{ color:{s.dim}; }}
-QLabel#noteLabel {{ color:{s.accent_text}; padding:4px; }}
-QLabel#toast {{ background:{s.tooltip_bg}; color:{s.text}; border:1px solid {s.line}; border-radius:10px; padding:6px 12px; }}
-""")
+from .skin_css import stylesheet  # noqa: E402,F401  (vr0.1.0.030: 스타일시트는 skin_css.py)

@@ -43,7 +43,7 @@ class TopBar(QWidget):
         self.cfg = cfg
         self.setObjectName("topBar")
         lay = QHBoxLayout(self)
-        lay.setContentsMargins(0, 0, 4, 0)
+        metrics.margins(lay, 0, 0, 4, 0)
         lay.setSpacing(0)
         self.price = _ClickLabel(objectName="tickerLabel")
         self.price.setCursor(Qt.CursorShape.PointingHandCursor)

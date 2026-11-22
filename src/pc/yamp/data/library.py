@@ -218,10 +218,16 @@ class Library:
         with self._lock:
             return [dict(r) for r in self.db.execute("SELECT * FROM tracks ORDER BY artist, album, title")]
 
-    def remove_missing(self) -> int:
+    def remove_missing(self, stop=None) -> int:
+        """없어진 파일의 곡을 지움. stop (v032 f60 P7): 참이 되면 (앱 종료) 중간에 그만두고 아무것도 지우지 않음"""
         with self._lock:
             rows = self.db.execute("SELECT key, path FROM tracks").fetchall()
-        gone = [(k,) for k, path in rows if not os.path.exists(path)]   # 파일 확인은 잠금 밖 (UI 스레드가 기다리지 않게)
+        gone = []
+        for i, (k, path) in enumerate(rows):                            # 파일 확인은 잠금 밖 (UI 스레드가 기다리지 않게)
+            if stop is not None and i % 256 == 0 and stop():
+                return 0
+            if not os.path.exists(path):
+                gone.append((k,))
         if gone:                                                        # v018: 한 번에 지움 (executemany)
             with self._lock:
                 self.db.executemany("DELETE FROM tracks WHERE key=?", gone)

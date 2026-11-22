@@ -227,4 +227,19 @@ class DspTest {
         p.process(again)
         assertTrue(again.all { it.isFinite() } && again.any { it != 0.0 })
     }
+    /** v032 (f60 A2): 컴프레서 '문턱 아래면 log10 · pow 건너뛰기' — 문턱 · 비율 · 크기 여러 가지에서 옛 식과 비트까지 같음 */
+    @Test fun compressorFastPathBitIdentical() {
+        val rnd = java.util.Random(32)
+        for (th in listOf(-60.0, -40.0, -18.0, -6.0, -0.5, 0.0)) for (ratio in listOf(1.0, 3.0, 20.0)) for (ch in 1..2) {
+            val s = SoundSettings(comp = true, limiter = th > -10, compThresholdDb = th, compRatio = ratio,
+                compAttackMs = 2.0, compReleaseMs = 80.0, compMakeupDb = 4.0).clamp()
+            for (amp in listOf(1e-7, 0.003, 0.05, 0.3, 1.0, 2.0)) {
+                val a = DoubleArray(1500 * ch) { (rnd.nextDouble() * 2 - 1) * amp }
+                val b = a.copyOf()
+                Dsp.Processor(s, 44100, ch).process(a)
+                referenceProcess(s, 44100, ch, b)
+                for (i in a.indices) assertEquals("th=$th r=$ratio amp=$amp #$i", b[i], a[i], 0.0)
+            }
+        }
+    }
 }

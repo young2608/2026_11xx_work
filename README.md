@@ -138,6 +138,37 @@ PC 는 같은 값을 mpv `af` 필터(lavfi equalizer/bass/treble/pan/acompressor
   **강조색 따라가기** (`follow_system_accent`) · **미디어 제어(SMTC)** — winrt 파이썬 패키지가 있을 때만 (MSYS2 기본 빌드에는 없음)
 - 단축키 바뀜: 가사 편집기 **Ctrl+Shift+K** (Ctrl+K 는 빠른 찾기), 화면 이동 Ctrl+1~6, 가사 패널 Ctrl+Shift+L, 대기열 패널 Ctrl+J
 
+### 화면 최대 해상도 반영 — 글자 · 틀 · 아이콘 (vr0.1.0.033, f61 — 10pt 화면은 이전과 픽셀까지 같음)
+- **글자 크기 자동**이 화면의 실제 밀도도 봄: 4K 를 100 % 로 쓰면 27" ≈ **14pt** · 24" ≈ **15pt** · 5K ≈ **16pt** (전: 높이만 봐서 13pt 가 끝) —
+  보통 모니터 · 권장 배율(4K 150 % 등)은 전과 같음 · `config.txt font_auto_dpi = 0` = 예전처럼 화면 높이만
+- **글자 크기 단계 9 ~ 16pt** (보기 → 글자 크기, Ctrl+= / Ctrl+-) — 15 · 16pt 추가
+- 큰 글자에서 **메뉴 막대 글자**도 함께 커짐 (전: 16pt 를 골라도 메뉴 막대만 9pt)
+- **틀도 글자를 따라감**: 카드 안 여백 · 줄 간격 · 최소 크기 · 대화상자 크기 · 메뉴 아이콘 · 체크 표시 · 슬라이더 두께(볼륨 손잡이 잘림 수정) · EQ 손잡이
+- 직접 그리는 글자 칸: 비주얼라이저 '레벨' 의 지금 dB(큰 글자에서 '-12 dB' 가 '2 dB' 로 잘리던 것) · 눈금 · 노브 · EQ 글자 줄 높이를 글꼴로 잼
+- **앱 아이콘** (Android 런처와 같은 모양): 제목 줄 · 작업 표시줄 · 트레이 · exe 파일 — 크기 · 배율마다 벡터로 또렷 (`build.sh exe` 가 16~256px `.ico` 를 만들어 넣음)
+- 테마 메뉴 색 견본 · 켜기 표시도 벡터 (큰 글자 · 300 % 에서 흐리지 않음)
+
+### 성능 병목 2차 (vr0.1.0.032, f60 — 그림 · 소리 · 목록 결과는 이전과 같음)
+- **PC 비주얼라이저**: 기본 모드 '레벨' 은 dB 를 값이 들어올 때 한 번만 계산 (프레임마다 600번 → 2번, 프레임 약 25 % ↓) ·
+  LED 막대는 칸 740개를 하나씩 칠하던 것 → 색 묶음 3번 (`drawRects`, 프레임 약 2배 빠름, 픽셀까지 같음 확인) ·
+  밴드 계산 계획 캐시 · 그리지 않을 오디오 버퍼는 변환을 미룸
+- **PC 목록**: 곡 이름 표시 · 검색 · 폴더 정렬에서 `Path` 객체를 만들지 않음 (2만 곡 이름 68 → 8 ms · 검색 58 → 14 ms · 정렬 72 → 18 ms) ·
+  여러 곡 빼기 한 번에 (2만 곡 중 5천 곡 7 → 1.8 ms)
+- **PC 라이브러리 스캔**은 따로 작업 줄 → 첫 스캔(수천 곡 태그 읽기) 동안에도 추천 홈 · 하루 정리가 기다리지 않음 · 종료하면 곡 사이에서 멈춤 (DB 닫힌 뒤 쓰기 방지)
+- **Android**: 사운드 처리 버퍼를 배열로 한 번에 읽고 씀 · 컴프레서는 문턱 아래면 log10 · pow 건너뜀 (JVM 측정 약 2.5~3배, 결과 비트까지 같음 — `DspTest`) ·
+  90/120 Hz 화면에서 스펙트럼 그리기 약 60fps 상한 · 스펙트럼 크기 계산 `hypot` → `sqrt` (같은 값)
+- 테스트: `src/pc/tests/test_v032_perf.py` (전 구현과 그림 · 값 · 목록 비교) · Android `DspTest.compressorFastPathBitIdentical`
+
+### 기능별 모듈화 · 리팩토링 2차 (vr0.1.0.030)
+- **PC** 긴 함수 나누기 (동작 · 화면 · 단축키는 같음, 메뉴 363줄 · 스타일시트 18테마×2글자크기 결과를 이전과 비교해 같음 확인):
+  메뉴 233줄 → 메뉴마다 함수 (`win_menus._menu_*` + 반복되던 켜기/끄기 · 하나 고르기 → `_check` · `_radio`) ·
+  제목 줄 · 메뉴 막대 접기 · Alt → `win_menubar.py` · 스타일시트 133줄 → `ui/skin_css.py` 묶음 7개 ·
+  단순 배치 → `_build_pages/_rail/_side` · 사운드 화면 → `_build_eq/_tone/_dyn` · 가사 찾기 93줄 → 단계별 함수
+- **Android** 설정 화면 149줄 → 카드마다 함수 (`ui/SettingsCards.kt`, 줄 모양 `SettingToggle` · `SettingStepper`)
+- **iOS** 기능별 폴더 `App/Player · Library · Visualizer · Settings · Theme` · 재생 엔진 → 재생 / 스펙트럼 계산(`SpectrumTap`) / 잠금화면(`PlayerEngine+System`)
+- 구조 규칙 테스트 추가: 함수 하나 80줄 미만 (PC, 아이콘 모양 표 제외) · iOS 파일마다 타입 1번 정의 · 괄호 짝
+- v031 재검: `skin_css` 를 먼저 import 하면 순환 import 오류 → 고침 (모든 PC 모듈 단독 import 확인) · Android 설정 카드가 Kotlin 2.0 강한 건너뛰기에서도 값이 바로 바뀌게 카드 안에서 다시 그리기
+
 ### iPhone(iOS) 앱 · ipa 빌드 환경 (vr0.1.0.028)
 - `src/ios/` — Swift(SwiftUI) iOS 16+ 앱 1단계: 곡 목록(파일 앱에서 가져오기) · 재생(AVAudioEngine, 백그라운드 · 잠금화면) · 비주얼라이저 5모드 · 테마 18개
 - 계산(`YampCore`: 스펙트럼 밴드 · 움직임 · 색) 과 테마 표는 PC · Android 와 같은 값 (`testdata/` 공용 값 · `tools/gen_ios.py` 가 생성)
@@ -172,7 +203,7 @@ PC 는 같은 값을 mpv `af` 필터(lavfi equalizer/bass/treble/pan/acompressor
 
 ### 고해상도 · 큰 화면 틀/글자 정리 (vr0.1.0.023)
 - **글자 크기 자동** (`config.txt` `font_auto = 1`, 보기 → 글자 크기 → 자동): 화면 크기에 맞춰 1080p = 10pt · 1440p = 11 · 4K(배율 100 %) = 13pt — 다른 크기 모니터로 옮기면 다시 맞춤
-- **글자 크기 단계** 9 · 10 · 11 · 12 · **13 · 14pt** — 고르면 자동은 꺼짐
+- **글자 크기 단계** 9 · 10 · 11 · 12 · **13 · 14pt** (v033: 15 · 16pt 까지) — 고르면 자동은 꺼짐
 - **틀이 글자를 따라감**: 왼쪽 레일 · 재생 막대 · 표지 · 아이콘 · 버튼 둥근 모서리 · 간격 · 미니 플레이어가 글자 크기와 같은 비율로 (10pt = 이전과 픽셀까지 같음, 1 · 2px 선은 그대로 선명)
 - **아주 넓은 창**: 지금 재생 카드는 최대 폭에서 가운데 정렬 · 오른쪽 가사 패널 최대 폭 제한 · 처음 창 크기는 큰 화면이면 화면의 60 %
 - 곡이 없을 때 표지 자리에 **♪** (빈 칸 대신) · 글자를 키워 버튼 줄이 넘치면 창을 그만큼 넓힘 · 저장된 위치가 없는 모니터면 주 화면으로
@@ -312,14 +343,14 @@ PC 는 같은 값을 mpv `af` 필터(lavfi equalizer/bass/treble/pan/acompressor
 │  │  ├─ yamp/data          library(SQLite) · recorder · playlist + track · scan · playlist_io · tags · cue · formats
 │  │  ├─ yamp/audio         engine(Qt) · mpv_engine(libmpv) · visualizer · waveform
 │  │  ├─ yamp/lyrics        service(Qt 스레드) + cache · resolve · providers/ · diag · lrc · query · score
-│  │  ├─ yamp/ui            위젯 · 화면 조각 (skin+themes(색 표) · metrics(틀 크기) · icons+icon_paths · neon · section · wave_seek · library_views …)
-│  │  ├─ yamp/app           controller(+ctl_*) · mainwindow(+win_*) · topbar(+ticker_service) · jobs
+│  │  ├─ yamp/ui            위젯 · 화면 조각 (skin+themes(색 표)+skin_css(스타일시트) · metrics(틀 크기) · icons+icon_paths · neon · section · wave_seek · library_views …)
+│  │  ├─ yamp/app           controller(+ctl_*) · mainwindow(+win_*: menus · menubar · layout · classic · now · actions · tray · native) · topbar(+ticker_service) · jobs
 │  │  ├─ yamp/winplat       Windows 연동 (작업 표시줄 · 전역 단축키 · 테마 · SMTC · 절전/종료)
 │  │  ├─ tests/             pytest (test_v0NN_*.py = 버전별 · conftest · gen_testdata)
 │  │  └─ tools/             soak(장시간) · leakcheck(화면 동작 누수) · qt_doctor(Qt 환경 점검)
 │  ├─ android/              Android 앱 (Gradle: gradlew · settings · app/src/main · app/src/test)
 │  │  └─ app/src/main/java/com/ascen/yamp/  core · data · domain · lyrics · playback · app · ui
-│  ├─ ios/                  iPhone 앱 (v028): project.yml(XcodeGen) · App/(SwiftUI) · YampCore/(계산 · swift test) · tools/gen_ios.py
+│  ├─ ios/                  iPhone 앱 (v028): project.yml(XcodeGen) · App/(SwiftUI: Player · Library · Visualizer · Settings · Theme — v030) · YampCore/(계산 · swift test) · tools/gen_ios.py
 │  └─ testdata/             PC · Android · iOS 공용 테스트 벡터 (recommend · dsp · cue · formats · themes · lyrics · upbit …)
 └─ dist/                    산출물 (빌드가 만듦 · 소스 아님): exe 폴더 · _win64.zip · .apk · _ios_unsigned.ipa · _release.zip · build_*.log
 ```
